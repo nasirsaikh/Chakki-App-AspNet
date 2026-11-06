@@ -421,7 +421,13 @@
     if (rateEl && !rateEl.value && document.activeElement !== rateEl) rateEl.placeholder = sys.toFixed(2);
     const rate = rateEl?.value ? parseFloat(rateEl.value) : sys;
     form.querySelector("[data-ca-bb-reason-wrap]")?.classList.toggle("d-none", !rateEl?.value || Math.abs(rate - sys) < 0.0001);
-    const qty = parseFloat(form.querySelector("[data-ca-bb-qty]")?.value || "0");
+    const lineSel = form.querySelector("[data-ca-bb-line]");
+    const qtyEl = form.querySelector("[data-ca-bb-qty]");
+    if (lineSel && qtyEl) {
+      const max = lineSel.selectedOptions[0]?.dataset.max;
+      if (max) { qtyEl.max = max; const hint = form.querySelector("[data-ca-bb-max]"); if (hint) hint.textContent = (document.documentElement.lang.startsWith("hi") ? "अधिकतम " : "At most ") + max.replace(/\.00$/, "") + " kg"; }
+    }
+    const qty = parseFloat(qtyEl?.value || "0");
     const value = Math.round(qty * rate * 100) / 100;
     const fee = Math.min(outstanding, value);
     const set = (k, v) => { const el = form.querySelector(`[data-ca-bb-${k}]`); if (el) el.textContent = rs(v); };
@@ -438,4 +444,34 @@ document.addEventListener("click", (e) => {
   if (!chip) return;
   const input = document.querySelector(chip.dataset.caFill);
   if (input) { input.value = chip.dataset.value || chip.textContent.trim(); input.focus(); }
+});
+
+// Order screen: tapping an earlier step opens the "go back" box for that step.
+document.addEventListener("click", (e) => {
+  const step = e.target.closest("[data-ca-back-to]");
+  if (!step) return;
+  const modal = document.getElementById("back-modal");
+  if (!modal) return;
+  modal.querySelector("[data-ca-back-input]").value = step.dataset.caBackTo;
+  modal.querySelector("[data-ca-back-name]").textContent = step.dataset.caBackLabel;
+  modal.querySelectorAll("[data-ca-back-note]").forEach((n) => n.classList.toggle("d-none", n.dataset.caBackNote !== step.dataset.caBackTo));
+});
+document.addEventListener("shown.bs.modal", (e) => e.target.querySelector("input:not([type=hidden])")?.focus());
+
+// Payment amount chips (one grain, this bill, bill + old Udhaar) fill every amount box on the card.
+document.addEventListener("click", (e) => {
+  const chip = e.target.closest("[data-ca-pay]");
+  if (!chip) return;
+  const card = chip.closest(".card");
+  card.querySelectorAll("[data-ca-pay-amount]").forEach((i) => (i.value = chip.dataset.caPay));
+  card.querySelectorAll("[data-ca-pay]").forEach((c) => c.classList.toggle("active", c === chip));
+});
+
+// Order form: number the grain lines 0, 1, 2… before sending so a removed line leaves no gap.
+document.addEventListener("submit", (e) => {
+  const form = e.target.closest?.("[data-ca-order-form]");
+  if (!form || e.defaultPrevented) return;
+  form.querySelectorAll("[data-ca-line]").forEach((line, i) => {
+    line.querySelectorAll("[name]").forEach((el) => (el.name = el.name.replace(/Lines\[\d+\]/, `Lines[${i}]`)));
+  });
 });

@@ -237,6 +237,9 @@ namespace Chakki.Web.Data.Migrations
                     b.Property<int?>("GrindingOrderId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("GrindingOrderLineId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("ItemId")
                         .HasColumnType("INTEGER");
 
@@ -514,6 +517,9 @@ namespace Chakki.Web.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeliveredAt")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("DoneAt")
@@ -884,6 +890,9 @@ namespace Chakki.Web.Data.Migrations
 
                     b.Property<int>("Method")
                         .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("OldUdhaarPart")
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("TEXT");

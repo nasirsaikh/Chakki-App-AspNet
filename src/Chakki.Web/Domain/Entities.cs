@@ -126,8 +126,8 @@ public class TaxRate : TenantEntity
 }
 
 public enum OrderStatus { Intake, Grinding, Ready, Delivered, Cancelled }
-/// <summary>Each grain / service is ground on its own; the order is Ready only when every line is Done.</summary>
-public enum LineStatus { Waiting, Grinding, Done }
+/// <summary>Each grain / service is ground and handed over on its own; the order is Ready when every line is Done and Delivered when every line is.</summary>
+public enum LineStatus { Waiting, Grinding, Done, Delivered }
 public enum PaymentState { Unbilled, Unpaid, Partial, Paid }
 
 public class GrindingOrder : TenantEntity
@@ -168,6 +168,7 @@ public class GrindingOrderLine : TenantEntity
     public decimal Amount { get; set; }
     public LineStatus Status { get; set; } = LineStatus.Waiting;
     public DateTime? DoneAt { get; set; }
+    public DateTime? DeliveredAt { get; set; }
     [MaxLength(40)] public string? TaxName { get; set; }
     public decimal TaxPercent { get; set; }
     public decimal TaxAmount { get; set; }
@@ -205,6 +206,8 @@ public class Payment : TenantEntity
     public SettlementStatus Status { get; set; } = SettlementStatus.Pending;
     /// <summary>Globally unique, unguessable reference used by QR, webhooks and the public pay link.</summary>
     [MaxLength(40)] public string Reference { get; set; } = "";
+    /// <summary>Part of this payment that cleared the customer's other Udhaar (old balance or other bills).</summary>
+    public decimal OldUdhaarPart { get; set; }
     public int? GatewayId { get; set; }
     public PaymentGateway? Gateway { get; set; }
     [MaxLength(60)] public string? ProviderSnapshot { get; set; }
@@ -385,6 +388,8 @@ public class Buyback : TenantEntity
     public int ItemId { get; set; }
     public InventoryItem? Item { get; set; }
     public int? GrindingOrderId { get; set; }
+    /// <summary>The grain the by-product came from (e.g. mustard → Khal); buyback cannot exceed that grain's weight.</summary>
+    public int? GrindingOrderLineId { get; set; }
     public decimal Quantity { get; set; }
     public decimal SystemRate { get; set; }
     public decimal AppliedRate { get; set; }

@@ -10,11 +10,11 @@ EF Core on SQLite, ASP.NET Identity, and an optional **Claude** chat assistant.
 
 | Area | Screens |
 |---|---|
-| Counter | Dashboard (auto-refresh every 30 s, 7-day chart), 3-step new order wizard with live per-grain amounts, each grain / service marked done on its own (the order is Ready when all are done), one combined bill with forgiveness |
-| Corrections | Undo any step with a reason (grain done, ready, handed over), remove a bill made by mistake (reversed in the books, only before money is received), cancel an order at any stage when the customer leaves; every correction is logged |
+| Counter | Dashboard (auto-refresh every 30 s, 7-day chart), 3-step new order wizard with live per-grain amounts, each grain / service marked done and handed over on its own (take the ready wheat today, the mustard oil later), one combined bill with forgiveness |
+| Corrections | Tap any earlier step (even Received) to go back with a reason, then change the customer, grains or weights; undo any single grain, remove a bill made by mistake (reversed in the books, only before money is received), cancel an order at any stage when the customer leaves; every correction is logged |
 | Search | Global search (Ctrl+K): customers, orders, phone, UTR, stock, pages; every dropdown and table is searchable |
 | Taxes | GST, VAT or any tax set up in Settings → Taxes and attached to rates or items; added on top or included, optional CGST + SGST halves; collected tax posts to Tax Payable |
-| Payments | Cash, **dynamic UPI QR** (any UPI app), **card / UPI via Razorpay Checkout**, shareable pay link for WhatsApp, signed webhooks, manual UTR confirmation |
+| Payments | Pay for one grain, the whole bill, or the bill plus old Udhaar in one go (the extra clears the oldest Udhaar first); cash, **dynamic UPI QR** (any UPI app), **card / UPI via Razorpay Checkout**, shareable pay link for WhatsApp, signed webhooks, manual UTR confirmation |
 | Customers | Customers, village filter, live search, history, **Udhaar** (credit) with receipts, **Old Udhaar** (opening balances, settled FIFO) |
 | Rates | Grain × service × Jalan rate card with a min / max band; any change needs a reason; every order line keeps a rate snapshot |
 | Stock | Inventory, purchases (supplier payables), retail sales with COGS, buyback against fees, production / yield, wastage |
@@ -62,8 +62,8 @@ Windows PowerShell (the prompt starts with `PS`; `set` does not work there): `$e
 dotnet test
 ```
 
-49 tests cover tenant isolation (filters, stamped writes, cross-tenant writes and foreign keys rejected), balanced journals,
-forgiveness kept out of Udhaar, rate bands, FIFO Udhaar receipts, webhook signature / amount / replay, per-grain status, undo / unbill / cancel, buyback against a bill, GST (inclusive and exclusive), and chat language detection.
+54 tests cover tenant isolation (filters, stamped writes, cross-tenant writes and foreign keys rejected), balanced journals,
+forgiveness kept out of Udhaar, rate bands, FIFO Udhaar receipts, webhook signature / amount / replay, per-grain status, undo / unbill / cancel, buyback against a bill and its weight limit, partial hand-over, paying one grain or bill + old Udhaar, going back to Received and changing the order, GST (inclusive and exclusive), and chat language detection.
 
 ## Configuration
 
@@ -155,6 +155,7 @@ Multigrain ₹3.50, Mustard oil extraction ₹5.00, Bajra and Makka ₹2.50 per 
 
 Buyback against the whole bill: wheat 25 kg × ₹2.40 = ₹60 plus mustard 15 kg × ₹5 = ₹75 makes a ₹135 bill. The customer sells
 10 kg Khal at ₹20 = ₹200: ₹135 settles the bill and ₹65 is returned in cash. This is done from the order screen after billing.
+Buyback is optional, and it is recorded against the grain it came from: it can never weigh more than that grain (15 kg mustard → at most 15 kg Khal).
 
 ## Roles
 

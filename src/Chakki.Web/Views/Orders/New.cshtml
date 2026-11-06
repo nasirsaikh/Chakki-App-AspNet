@@ -1,15 +1,20 @@
 @model Chakki.Web.Controllers.OrderNewModel
 @{
-    ViewData["Title"] = T["New grinding order"].Value;
+    var editing = Model.Editing;
+    ViewData["Title"] = editing == null ? T["New grinding order"].Value : $"{T["Change order"].Value} {editing.Ref}";
     ViewData["Lead"] = T["Three quick steps: customer, grain and service, then check and save."].Value;
     var hi = T.Hi();
     string inv(decimal d) => d.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
-<form asp-antiforgery="true" method="post" action="/orders/new" data-ca-order-form data-ca-wizard novalidate>
-  <ol class="ca-wizard-steps" aria-label="@T["Steps"]">
-    <li class="current" data-ca-step-tab="0"><span class="ca-wizard-num">1</span><span class="ca-wizard-label">@T["Customer"]</span></li>
-    <li data-ca-step-tab="1"><span class="ca-wizard-num">2</span><span class="ca-wizard-label">@T["Grain and service"]</span></li>
-    <li data-ca-step-tab="2"><span class="ca-wizard-num">3</span><span class="ca-wizard-label">@T["Check and save"]</span></li>
+@{
+    var lines = editing?.Lines.OrderBy(l => l.Id).ToList() ?? [];
+    var count = Math.Max(1, lines.Count);
+}
+<form asp-antiforgery="true" method="post" action="@(editing == null ? "/orders/new" : $"/orders/{editing.Id}/edit")" data-ca-order-form data-ca-wizard novalidate>
+  <ol class="ca-stepper ca-wizard-steps" aria-label="@T["Steps"]">
+    <li class="current" data-ca-step-tab="0"><span class="ca-step-dot" aria-hidden="true"><span class="ca-step-n">1</span><i class="bi bi-check-lg"></i></span><span class="ca-step-label">@T["Customer"]</span></li>
+    <li data-ca-step-tab="1"><span class="ca-step-dot" aria-hidden="true"><span class="ca-step-n">2</span><i class="bi bi-check-lg"></i></span><span class="ca-step-label">@T["Grain and service"]</span></li>
+    <li data-ca-step-tab="2"><span class="ca-step-dot" aria-hidden="true"><span class="ca-step-n">3</span><i class="bi bi-check-lg"></i></span><span class="ca-step-label">@T["Check and save"]</span></li>
   </ol>
 
   <section class="card mb-3" data-ca-step="0" aria-label="@T["Customer"]">
@@ -35,21 +40,25 @@
     <div class="card-header d-flex justify-content-between align-items-center"><h2 class="card-title">@T["Step 2 · Grain and service"]</h2>
       <button class="btn btn-outline-secondary btn-sm" type="button" data-ca-add-line><i class="bi bi-plus" aria-hidden="true"></i> @T["Add grain"]</button></div>
     <div class="card-body">
-      <div class="ca-order-line" data-ca-line>
-        <div><label class="form-label">@T["Service"]</label>
-          <select class="form-select" name="Lines[0].RateCardId" required>
-            @foreach (var r in Model.Rates)
-            {
-              var tax = r.TaxRate is { IsActive: true } t ? t : null;
-              <option value="@r.Id" data-rate="@inv(r.SystemRate)" data-min="@inv(r.MinRate)" data-max="@inv(r.MaxRate)" data-tax="@inv(tax?.Percent ?? 0)" data-tax-incl="@(tax?.Inclusive == true ? "1" : "0")" data-tax-name="@tax?.Name">@(hi && r.ServiceHi != null ? r.ServiceHi : r.Label) — @Fmt.Rs(r.SystemRate)/kg@(tax != null ? $" + {tax.Name} {tax.Percent:0.##}%" : "")</option>
-            }
-          </select></div>
-        <div><label class="form-label">@T["Weight (kg)"]</label><input class="form-control" name="Lines[0].WeightKg" type="number" step="0.01" min="0.1" inputmode="decimal" required data-ca-kg></div>
-        <div><label class="form-label">@T["Rate ₹/kg"]</label><input class="form-control" name="Lines[0].AppliedRate" type="number" step="0.01" inputmode="decimal" data-ca-rate data-auto="1"></div>
-        <div class="ca-line-amount" aria-live="polite"><span class="form-label d-block">@T["Amount"]</span><strong data-ca-line-amount>₹0.00</strong><small class="d-block text-body-secondary" data-ca-line-tax></small></div>
-        <div><button class="btn btn-ghost btn-outline-secondary" type="button" data-ca-remove-line aria-label="@T["Remove"]"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
-        <div class="ca-line-reason d-none" data-ca-reason-wrap><label class="form-label">@T["Reason for rate change"]</label><input class="form-control" name="Lines[0].OverrideReason" maxlength="200" data-ca-reason></div>
-      </div>
+      @for (var i = 0; i < count; i++)
+      {
+        var line = i < lines.Count ? lines[i] : null;
+        <div class="ca-order-line" data-ca-line>
+          <div><label class="form-label">@T["Service"]</label>
+            <select class="form-select" name="Lines[@i].RateCardId" required>
+              @foreach (var r in Model.Rates)
+              {
+                var tax = r.TaxRate is { IsActive: true } t ? t : null;
+                <option value="@r.Id" selected="@(line?.RateCardId == r.Id)" data-rate="@inv(r.SystemRate)" data-min="@inv(r.MinRate)" data-max="@inv(r.MaxRate)" data-tax="@inv(tax?.Percent ?? 0)" data-tax-incl="@(tax?.Inclusive == true ? "1" : "0")" data-tax-name="@tax?.Name">@(hi && r.ServiceHi != null ? r.ServiceHi : r.Label) — @Fmt.Rs(r.SystemRate)/kg@(tax != null ? $" + {tax.Name} {tax.Percent:0.##}%" : "")</option>
+              }
+            </select></div>
+          <div><label class="form-label">@T["Weight (kg)"]</label><input class="form-control" name="Lines[@i].WeightKg" type="number" step="0.01" min="0.1" inputmode="decimal" required data-ca-kg value="@(line == null ? "" : inv(line.WeightKg))"></div>
+          <div><label class="form-label">@T["Rate ₹/kg"]</label><input class="form-control" name="Lines[@i].AppliedRate" type="number" step="0.01" inputmode="decimal" data-ca-rate data-auto="@(line == null || line.AppliedRate == line.SystemRate ? "1" : "0")" value="@(line == null ? "" : inv(line.AppliedRate))"></div>
+          <div class="ca-line-amount" aria-live="polite"><span class="form-label d-block">@T["Amount"]</span><strong data-ca-line-amount>₹0.00</strong><small class="d-block text-body-secondary" data-ca-line-tax></small></div>
+          <div><button class="btn btn-ghost btn-outline-secondary" type="button" data-ca-remove-line aria-label="@T["Remove"]"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+          <div class="ca-line-reason @(line?.OverrideReason == null ? "d-none" : "")" data-ca-reason-wrap><label class="form-label">@T["Reason for rate change"]</label><input class="form-control" name="Lines[@i].OverrideReason" maxlength="200" data-ca-reason value="@line?.OverrideReason"></div>
+        </div>
+      }
     </div>
   </section>
 
@@ -61,15 +70,15 @@
         <thead><tr><th>@T["Service"]</th><th class="num">@T["Weight"]</th><th class="num">@T["Rate"]</th><th class="num">@T["Amount"]</th></tr></thead>
         <tbody data-ca-review-lines></tbody>
       </table></div>
-      <label class="form-label" for="Notes">@T["Notes"]</label><input class="form-control" id="Notes" name="Notes" maxlength="300">
+      <label class="form-label" for="Notes">@T["Notes"]</label><input class="form-control" id="Notes" name="Notes" maxlength="300" value="@editing?.Notes">
     </div>
   </section>
 
   <div class="ca-total-bar"><span>@T["Estimated bill"] <small class="d-block fw-normal" data-ca-total-tax></small></span><strong data-ca-total>₹0.00</strong></div>
   <div class="ca-form-actions ca-wizard-actions">
-    <a class="btn btn-outline-secondary" href="/orders" data-ca-wizard-cancel>@T["Cancel"]</a>
+    <a class="btn btn-outline-secondary" href="@(editing == null ? "/orders" : $"/orders/{editing.Id}")" data-ca-wizard-cancel>@T["Cancel"]</a>
     <button class="btn btn-outline-secondary d-none" type="button" data-ca-wizard-back><i class="bi bi-arrow-left" aria-hidden="true"></i> @T["Back"]</button>
     <button class="btn btn-primary btn-lg" type="button" data-ca-wizard-next>@T["Next"] <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
-    <button class="btn btn-primary btn-lg d-none" type="submit" data-ca-wizard-submit><i class="bi bi-check2" aria-hidden="true"></i> @T["Save order"]</button>
+    <button class="btn btn-primary btn-lg d-none" type="submit" data-ca-wizard-submit><i class="bi bi-check2" aria-hidden="true"></i> @(editing == null ? T["Save order"] : T["Save changes"])</button>
   </div>
 </form>

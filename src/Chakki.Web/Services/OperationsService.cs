@@ -92,7 +92,7 @@ public class OperationsService(AppDbContext db, LedgerService ledger)
     /// Customer sells by-product (e.g. Khal) to the chakki. The value first settles the linked order's fee; the rest is paid in cash.
     ///   Dr Inventory (value), Cr Buyback Payable (value); Dr Buyback Payable (fee), Cr Receivable (fee); Dr Buyback Payable (rest), Cr Cash (rest).
     /// </summary>
-    public async Task<Buyback> BuybackAsync(int customerId, int itemId, decimal qty, decimal? appliedRate, string? reason, int? orderId, string userId)
+    public async Task<Buyback> BuybackAsync(int customerId, int itemId, decimal qty, decimal? appliedRate, string? reason, int? orderId, string userId, int? lineId = null)
     {
         if (qty <= 0) throw new BusinessRuleException("Quantity must be positive.");
         var customer = await db.Customers.FindAsync(customerId) ?? throw new BusinessRuleException("Customer not found.");
@@ -108,12 +108,20 @@ public class OperationsService(AppDbContext db, LedgerService ledger)
         {
             order = await db.GrindingOrders.FirstOrDefaultAsync(o => o.Id == orderId && o.CustomerId == customer.Id) ?? throw new BusinessRuleException("Order not found for this customer.");
             if (order.BilledAt == null) throw new BusinessRuleException("Bill the order before adjusting it against buyback.");
+            var orderLines = await db.GrindingOrderLines.Where(l => l.GrindingOrderId == order.Id).ToListAsync();
+            var line = lineId is > 0 ? orderLines.FirstOrDefault(l => l.Id == lineId) ?? throw new BusinessRuleException("Choose the grain this came from.")
+                : orderLines.Count == 1 ? orderLines[0] : throw new BusinessRuleException("Choose the grain this came from.");
+            lineId = line.Id;
+            // A by-product can never weigh more than the grain it came from (e.g. 15 kg mustard → at most 15 kg Khal).
+            var already = (await db.Buybacks.Where(b => b.GrindingOrderLineId == line.Id).Select(b => b.Quantity).ToListAsync()).Sum();
+            if (qty + already > line.WeightKg)
+                throw new BusinessRuleException($"Buyback cannot be more than the grain's weight: {line.WeightKg:0.##} kg (already bought back {already:0.##} kg).");
             fee = Math.Min(order.Outstanding, value);
         }
         var cash = value - fee;
         var bb = new Buyback
         {
-            CustomerId = customer.Id, ItemId = item.Id, GrindingOrderId = order?.Id, Quantity = qty, SystemRate = item.BuybackRate, AppliedRate = rate,
+            CustomerId = customer.Id, ItemId = item.Id, GrindingOrderId = order?.Id, GrindingOrderLineId = order != null ? lineId : null, Quantity = qty, SystemRate = item.BuybackRate, AppliedRate = rate,
             OverrideReason = rate != item.BuybackRate ? reason : null, Value = value, FeeAdjusted = fee, CashPaid = cash, Date = Today,
         };
         db.Buybacks.Add(bb);

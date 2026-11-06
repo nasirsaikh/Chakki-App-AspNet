@@ -20,24 +20,32 @@ public class OrderService(AppDbContext db, LedgerService ledger)
 
         var org = await db.Organizations.SingleAsync(o => o.Id == db.CurrentOrganizationId);
         var order = new GrindingOrder { Number = org.NextOrderNo++, CustomerId = customer.Id, Notes = notes, CreatedById = userId };
-        foreach (var input in lines)
+        order.Lines.AddRange(await BuildLinesAsync(lines));
+        order.TaxTotal = order.Lines.Sum(l => l.TaxAmount);
+        order.Total = order.Lines.Sum(l => l.LineTotal);
+        db.GrindingOrders.Add(order);
+        await db.SaveChangesAsync();
+        return order;
+    }
+
+    private async Task<List<GrindingOrderLine>> BuildLinesAsync(IEnumerable<OrderLineInput> inputs)
+    {
+        var list = new List<GrindingOrderLine>();
+        foreach (var input in inputs.Where(i => i.WeightKg > 0))
         {
             var rate = await db.RateCards.Include(r => r.TaxRate).FirstOrDefaultAsync(r => r.Id == input.RateCardId) ?? throw new BusinessRuleException("Rate not found.");
             var applied = ValidateRate(rate, input.AppliedRate, input.OverrideReason);
             var tax = rate.TaxRate is { IsActive: true } t ? t : null;
             var (net, taxAmount) = Taxes.Split(Money(input.WeightKg * applied), tax);
-            order.Lines.Add(new GrindingOrderLine
+            list.Add(new GrindingOrderLine
             {
                 RateCardId = rate.Id, WeightKg = input.WeightKg, SystemRate = rate.SystemRate, AppliedRate = applied,
                 OverrideReason = applied != rate.SystemRate ? input.OverrideReason?.Trim() : null,
                 Amount = net, TaxAmount = taxAmount, TaxName = tax?.Name, TaxPercent = tax?.Percent ?? 0,
             });
         }
-        order.TaxTotal = order.Lines.Sum(l => l.TaxAmount);
-        order.Total = order.Lines.Sum(l => l.LineTotal);
-        db.GrindingOrders.Add(order);
-        await db.SaveChangesAsync();
-        return order;
+        if (list.Count == 0) throw new BusinessRuleException("Add at least one grain with a weight.");
+        return list;
     }
 
     /// <summary>Applied rate must stay inside the configured band; any change needs a reason.</summary>
@@ -52,67 +60,103 @@ public class OrderService(AppDbContext db, LedgerService ledger)
         return applied;
     }
 
+    /// <summary>Whole-order buttons: start every waiting grain, finish every grain, or hand over every finished grain.</summary>
     public async Task AdvanceAsync(GrindingOrder order, OrderStatus to)
     {
-        var allowed = order.Status switch
+        if (order.Status == OrderStatus.Cancelled) throw new BusinessRuleException("This order is cancelled.");
+        var now = DateTime.UtcNow;
+        switch (to)
         {
-            OrderStatus.Intake => new[] { OrderStatus.Grinding },
-            OrderStatus.Grinding => [OrderStatus.Ready],
-            OrderStatus.Ready => [OrderStatus.Delivered],
-            _ => [],
-        };
-        if (!allowed.Contains(to)) throw new BusinessRuleException($"An order that is {order.Status} cannot move to {to}.");
-        if (to == OrderStatus.Cancelled && order.BilledAt != null) throw new BusinessRuleException("A billed order cannot be cancelled; reverse its journal instead.");
-        order.Status = to;
-        if (to == OrderStatus.Delivered) order.DeliveredAt = DateTime.UtcNow;
-        // Whole-order buttons move every line that is behind.
-        if (to == OrderStatus.Grinding)
-            foreach (var l in order.Lines.Where(l => l.Status == LineStatus.Waiting)) l.Status = LineStatus.Grinding;
-        if (to == OrderStatus.Ready)
-            foreach (var l in order.Lines.Where(l => l.Status != LineStatus.Done)) { l.Status = LineStatus.Done; l.DoneAt = DateTime.UtcNow; }
+            case OrderStatus.Grinding:
+                foreach (var l in order.Lines.Where(l => l.Status == LineStatus.Waiting)) l.Status = LineStatus.Grinding;
+                break;
+            case OrderStatus.Ready:
+                foreach (var l in order.Lines.Where(l => l.Status < LineStatus.Done)) { l.Status = LineStatus.Done; l.DoneAt = now; }
+                break;
+            case OrderStatus.Delivered:
+                var ready = order.Lines.Where(l => l.Status == LineStatus.Done).ToList();
+                if (ready.Count == 0) throw new BusinessRuleException("Nothing is ready to hand over yet.");
+                foreach (var l in ready) { l.Status = LineStatus.Delivered; l.DeliveredAt = now; }
+                break;
+            default:
+                throw new BusinessRuleException($"An order cannot move to {to} this way.");
+        }
+        Sync(order);
         await db.SaveChangesAsync();
     }
 
     /// <summary>
-    /// Moves one grain / service on its own (Waiting → Grinding → Done, or back one step to correct a mistake).
-    /// The order follows its lines: Received while all wait, Grinding while any is in work, Ready when all are done.
+    /// Moves one grain / service on its own: Waiting → Grinding → Done → Delivered (handed over), or back a step to fix a mistake.
+    /// Ready grains can be handed over while others are still being ground.
     /// </summary>
     public async Task SetLineStatusAsync(GrindingOrder order, int lineId, LineStatus to, string userId = "")
     {
-        if (order.Status is OrderStatus.Delivered or OrderStatus.Cancelled) throw new BusinessRuleException("This order is closed.");
+        if (order.Status is OrderStatus.Cancelled) throw new BusinessRuleException("This order is cancelled.");
         var line = order.Lines.FirstOrDefault(l => l.Id == lineId) ?? throw new KeyNotFoundException();
-        if (Math.Abs((int)to - (int)line.Status) > 1 && to != LineStatus.Done)
-            throw new BusinessRuleException("Move one step at a time.");
-        if (to < line.Status) Audit(order, "line.step_back", $"line {line.Id} {line.Status} → {to}", userId);
-        line.Status = to;
-        line.DoneAt = to == LineStatus.Done ? DateTime.UtcNow : null;
-        order.Status = DeriveStatus(order.Lines);
+        var forwardOk = to == line.Status + 1 || (line.Status == LineStatus.Waiting && to == LineStatus.Done);
+        var backOk = to < line.Status;
+        if (!forwardOk && !backOk) throw new BusinessRuleException("This step is not possible from here.");
+        if (backOk) Audit(order, "line.step_back", $"line {line.Id} {line.Status} → {to}", userId);
+        ApplyLine(line, to, DateTime.UtcNow);
+        Sync(order);
         await db.SaveChangesAsync();
     }
 
     /// <summary>
-    /// Goes back one step to correct a mistake: Delivered → Ready → Grinding → Received. A reason is required and logged.
-    /// The bill is not touched (use <see cref="UnbillAsync"/>), so money already recorded stays correct.
+    /// Goes back to any earlier step (Delivered, Ready, Grinding or Received) to correct a mistake. A reason is required and logged.
+    /// The bill and payments are not touched (use <see cref="UnbillAsync"/>), so money already recorded stays correct.
     /// </summary>
-    public async Task StepBackAsync(GrindingOrder order, string reason, string userId)
+    public async Task StepBackToAsync(GrindingOrder order, OrderStatus target, string reason, string userId)
     {
         reason = RequireReason(reason);
+        if (order.Status == OrderStatus.Cancelled) throw new BusinessRuleException("This order is cancelled.");
+        if (target >= order.Status || target == OrderStatus.Cancelled) throw new BusinessRuleException("Choose an earlier step.");
+        var cap = target switch { OrderStatus.Intake => LineStatus.Waiting, OrderStatus.Grinding => LineStatus.Grinding, _ => LineStatus.Done };
         var from = order.Status;
-        switch (order.Status)
-        {
-            case OrderStatus.Delivered:
-                order.Status = OrderStatus.Ready; order.DeliveredAt = null; break;
-            case OrderStatus.Ready:
-                foreach (var l in order.Lines) { l.Status = LineStatus.Grinding; l.DoneAt = null; }
-                order.Status = OrderStatus.Grinding; break;
-            case OrderStatus.Grinding:
-                foreach (var l in order.Lines) { l.Status = LineStatus.Waiting; l.DoneAt = null; }
-                order.Status = OrderStatus.Intake; break;
-            default:
-                throw new BusinessRuleException("There is no earlier step.");
-        }
+        foreach (var l in order.Lines.Where(l => l.Status > cap)) ApplyLine(l, cap, DateTime.UtcNow);
+        Sync(order);
         Audit(order, "order.step_back", $"{from} → {order.Status}: {reason}", userId);
         await db.SaveChangesAsync();
+    }
+
+    public Task StepBackAsync(GrindingOrder order, string reason, string userId) =>
+        order.Status == OrderStatus.Intake ? throw new BusinessRuleException("There is no earlier step.")
+            : StepBackToAsync(order, order.Status - 1, reason, userId);
+
+    /// <summary>
+    /// Changes the customer, grains, weights or rates of an order sent back to Received. Only before billing and buyback,
+    /// so nothing in the books has to change.
+    /// </summary>
+    public async Task UpdateAsync(GrindingOrder order, int customerId, IEnumerable<OrderLineInput> inputs, string? notes, string userId)
+    {
+        if (order.Status != OrderStatus.Intake) throw new BusinessRuleException("Go back to Received before changing the order.");
+        if (order.BilledAt != null) throw new BusinessRuleException("Remove the bill before changing the order.");
+        if (await db.Buybacks.AnyAsync(b => b.GrindingOrderId == order.Id)) throw new BusinessRuleException("This order has a buyback; it cannot be changed.");
+        var customer = await db.Customers.FindAsync(customerId) ?? throw new BusinessRuleException("Customer not found.");
+        var lines = await BuildLinesAsync(inputs);
+        db.GrindingOrderLines.RemoveRange(order.Lines);
+        order.Lines.Clear();
+        order.Lines.AddRange(lines);
+        order.CustomerId = customer.Id;
+        order.Notes = notes;
+        order.TaxTotal = order.Lines.Sum(l => l.TaxAmount);
+        order.Total = order.Lines.Sum(l => l.LineTotal);
+        Audit(order, "order.edit", $"{lines.Count} line(s), total {order.Total:0.00}", userId);
+        await db.SaveChangesAsync();
+    }
+
+    private static void ApplyLine(GrindingOrderLine l, LineStatus to, DateTime now)
+    {
+        l.Status = to;
+        l.DoneAt = to >= LineStatus.Done ? l.DoneAt ?? now : null;
+        l.DeliveredAt = to == LineStatus.Delivered ? l.DeliveredAt ?? now : null;
+    }
+
+    /// <summary>The order status always follows its lines.</summary>
+    private static void Sync(GrindingOrder order)
+    {
+        order.Status = DeriveStatus(order.Lines);
+        order.DeliveredAt = order.Status == OrderStatus.Delivered ? order.Lines.Max(l => l.DeliveredAt) : null;
     }
 
     /// <summary>
@@ -143,7 +187,7 @@ public class OrderService(AppDbContext db, LedgerService ledger)
     public async Task CancelAsync(GrindingOrder order, string reason, string userId)
     {
         reason = RequireReason(reason);
-        if (order.Status is OrderStatus.Delivered) throw new BusinessRuleException("This order is already handed over. Undo the hand-over first.");
+        if (order.Lines.Any(l => l.Status == LineStatus.Delivered)) throw new BusinessRuleException("Some grain is already handed over. Undo the hand-over first.");
         if (order.Status is OrderStatus.Cancelled) throw new BusinessRuleException("This order is already cancelled.");
         if (order.BilledAt != null) await UnbillAsync(order, reason, userId);
         foreach (var p in order.Payments.Where(p => p.Status == SettlementStatus.Pending)) p.Status = SettlementStatus.Expired;
@@ -164,7 +208,9 @@ public class OrderService(AppDbContext db, LedgerService ledger)
         db.AuditLogs.Add(new AuditLog { UserId = userId, Action = action, Detail = $"{order.Ref}: {detail}"[..Math.Min(300, order.Ref.Length + 2 + detail.Length)] });
 
     public static OrderStatus DeriveStatus(IReadOnlyCollection<GrindingOrderLine> lines) =>
-        lines.All(l => l.Status == LineStatus.Done) ? OrderStatus.Ready
+        lines.Count == 0 ? OrderStatus.Intake
+        : lines.All(l => l.Status == LineStatus.Delivered) ? OrderStatus.Delivered
+        : lines.All(l => l.Status >= LineStatus.Done) ? OrderStatus.Ready
         : lines.All(l => l.Status == LineStatus.Waiting) ? OrderStatus.Intake
         : OrderStatus.Grinding;
 
@@ -191,9 +237,13 @@ public class OrderService(AppDbContext db, LedgerService ledger)
         await db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Cash for this order. The amount may be part of the bill (e.g. one grain), the whole bill, or more than the bill
+    /// up to the customer's total Udhaar: the extra clears Old Udhaar first, then the oldest other bills.
+    /// </summary>
     public async Task<Payment> CollectCashAsync(GrindingOrder order, decimal amount, string userId)
     {
-        EnsurePayable(order, amount);
+        await EnsurePayableAsync(order, amount);
         var payment = new Payment
         {
             GrindingOrderId = order.Id, CustomerId = order.CustomerId, Method = PaymentMethod.Cash, Amount = Money(amount),
@@ -205,20 +255,35 @@ public class OrderService(AppDbContext db, LedgerService ledger)
         return payment;
     }
 
-    public static void EnsurePayable(GrindingOrder order, decimal amount)
+    /// <summary>Most the customer can pay through this order: its outstanding plus any other Udhaar they owe.</summary>
+    public async Task<decimal> MaxPayableAsync(GrindingOrder order) =>
+        Math.Max(order.Outstanding, await ledger.CustomerUdhaarAsync(order.CustomerId));
+
+    public async Task EnsurePayableAsync(GrindingOrder order, decimal amount)
     {
         if (order.BilledAt == null) throw new BusinessRuleException("Bill the order before taking payment.");
         if (amount <= 0) throw new BusinessRuleException("Amount must be more than zero.");
-        if (Money(amount) > order.Outstanding) throw new BusinessRuleException($"Amount cannot exceed the outstanding ₹{order.Outstanding:0.00}.");
+        var max = await MaxPayableAsync(order);
+        if (Money(amount) > max) throw new BusinessRuleException($"Amount cannot exceed what the customer owes in total, ₹{max:0.00}.");
     }
 
-    /// <summary>Dr Cash/Bank, Cr Receivable; updates the order. Idempotent: a settled payment is never settled twice.</summary>
+    /// <summary>
+    /// Dr Cash/Bank, Cr Receivable. The part up to this bill's outstanding goes to this order; any extra clears the
+    /// customer's other Udhaar (FIFO). Idempotent: a settled payment is never settled twice.
+    /// </summary>
     public async Task SettleAsync(GrindingOrder order, Payment payment, string? providerPaymentId, string? userId)
     {
         if (payment.Status == SettlementStatus.Settled) return;
-        if (payment.Amount > order.Outstanding) throw new BusinessRuleException("Payment is larger than what is outstanding.");
+        var toThisOrder = Math.Min(payment.Amount, Math.Max(0, order.Outstanding));
+        var extra = payment.Amount - toThisOrder;
+        if (extra > 0)
+        {
+            var otherUdhaar = await ledger.CustomerUdhaarAsync(order.CustomerId) - order.Outstanding;
+            if (extra > otherUdhaar) throw new BusinessRuleException("Payment is larger than what the customer owes.");
+        }
         var debit = payment.Method == PaymentMethod.Cash ? SystemAccounts.Cash : SystemAccounts.Bank;
-        var journal = await ledger.PostAsync(DateOnly.FromDateTime(DateTime.Today), $"Payment {payment.Reference} for {order.Ref}", "payment", order.Id,
+        var memo = extra > 0 ? $"Payment {payment.Reference} for {order.Ref} + old Udhaar {extra:0.00}" : $"Payment {payment.Reference} for {order.Ref}";
+        var journal = await ledger.PostAsync(DateOnly.FromDateTime(DateTime.Today), memo, "payment", order.Id,
         [
             new(debit, payment.Amount, 0),
             new(SystemAccounts.Receivable, 0, payment.Amount, order.CustomerId),
@@ -227,13 +292,10 @@ public class OrderService(AppDbContext db, LedgerService ledger)
         payment.SettledAt = DateTime.UtcNow;
         payment.ProviderPaymentId ??= providerPaymentId;
         payment.JournalEntry = journal;
-        order.Paid += payment.Amount;
+        payment.OldUdhaarPart = extra;
+        order.Paid += toThisOrder;
         RefreshPaymentState(order);
-        if (order.PaymentState == PaymentState.Paid && order.Status == OrderStatus.Ready)
-        {
-            order.Status = OrderStatus.Delivered;
-            order.DeliveredAt = DateTime.UtcNow;
-        }
+        if (extra > 0) await AllocateUdhaarAsync(order.CustomerId, extra, payment.Method, userId, order.Id);
     }
 
     public static void RefreshPaymentState(GrindingOrder order) =>
@@ -250,7 +312,19 @@ public class OrderService(AppDbContext db, LedgerService ledger)
         if (amount <= 0) throw new BusinessRuleException("Amount must be more than zero.");
         var owed = await ledger.CustomerUdhaarAsync(customerId);
         if (amount > owed) throw new BusinessRuleException($"Amount cannot exceed the Udhaar of ₹{owed:0.00}.");
+        await AllocateUdhaarAsync(customerId, amount, PaymentMethod.Cash, userId, null);
+        await ledger.PostAsync(DateOnly.FromDateTime(DateTime.Today), "Udhaar receipt", "udhaar", customerId,
+        [
+            new(SystemAccounts.Cash, amount, 0),
+            new(SystemAccounts.Receivable, 0, amount, customerId),
+        ], userId);
+        await db.SaveChangesAsync();
+        return amount;
+    }
 
+    /// <summary>FIFO: opening balances (Old Udhaar) oldest first, then the oldest billed orders. Posts nothing; the caller posts the journal.</summary>
+    private async Task AllocateUdhaarAsync(int customerId, decimal amount, PaymentMethod method, string? userId, int? skipOrderId)
+    {
         var remaining = amount;
         var openings = (await db.OpeningBalances.Where(o => o.CustomerId == customerId).OrderBy(o => o.AsOf).ThenBy(o => o.Id).ToListAsync())
             .Where(o => o.Remaining > 0);
@@ -259,33 +333,23 @@ public class OrderService(AppDbContext db, LedgerService ledger)
             var take = Math.Min(ob.Remaining, remaining);
             ob.Settled += take;
             remaining -= take;
-            if (remaining == 0) break;
+            if (remaining == 0) return;
         }
-        if (remaining > 0)
+        var orders = (await db.GrindingOrders.Where(o => o.CustomerId == customerId && o.BilledAt != null && o.Id != skipOrderId).OrderBy(o => o.BilledAt).ToListAsync())
+            .Where(o => o.Outstanding > 0);
+        foreach (var order in orders)
         {
-            var orders = (await db.GrindingOrders.Where(o => o.CustomerId == customerId && o.BilledAt != null).OrderBy(o => o.BilledAt).ToListAsync())
-                .Where(o => o.Outstanding > 0);
-            foreach (var order in orders)
+            var take = Math.Min(order.Outstanding, remaining);
+            order.Paid += take;
+            RefreshPaymentState(order);
+            db.Payments.Add(new Payment
             {
-                var take = Math.Min(order.Outstanding, remaining);
-                order.Paid += take;
-                RefreshPaymentState(order);
-                db.Payments.Add(new Payment
-                {
-                    GrindingOrderId = order.Id, CustomerId = customerId, Method = PaymentMethod.Cash, Amount = take,
-                    Status = SettlementStatus.Settled, SettledAt = DateTime.UtcNow, Reference = PaymentReferences.New("UDH"), RecordedById = userId,
-                });
-                remaining -= take;
-                if (remaining == 0) break;
-            }
+                GrindingOrderId = order.Id, CustomerId = customerId, Method = method, Amount = take, Status = SettlementStatus.Settled,
+                SettledAt = DateTime.UtcNow, Reference = PaymentReferences.New("UDH"), RecordedById = userId,
+            });
+            remaining -= take;
+            if (remaining == 0) return;
         }
-        await ledger.PostAsync(DateOnly.FromDateTime(DateTime.Today), "Udhaar receipt", "udhaar", customerId,
-        [
-            new(SystemAccounts.Cash, amount, 0),
-            new(SystemAccounts.Receivable, 0, amount, customerId),
-        ], userId);
-        await db.SaveChangesAsync();
-        return amount;
     }
 }
 

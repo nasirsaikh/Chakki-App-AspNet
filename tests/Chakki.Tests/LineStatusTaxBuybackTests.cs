@@ -60,7 +60,7 @@ public class LineStatusTaxBuybackTests
         await env.Db.SaveChangesAsync();
         var cashBefore = await env.Ledger.AccountBalanceAsync(SystemAccounts.Cash);
 
-        var bb = await env.Ops.BuybackAsync(order.CustomerId, khal.Id, 10, null, null, order.Id, TestEnv.User);
+        var bb = await env.Ops.BuybackAsync(order.CustomerId, khal.Id, 10, null, null, order.Id, TestEnv.User, order.Lines[1].Id); // Khal from the mustard
 
         Assert.Equal(200m, bb.Value);
         Assert.Equal(135m, bb.FeeAdjusted);
@@ -180,5 +180,111 @@ public class LineStatusTaxBuybackTests
         var o = await env.BilledOrderAsync(25);
         await env.Orders.CollectCashAsync(o, 20, TestEnv.User);
         await Assert.ThrowsAsync<BusinessRuleException>(() => env.Orders.CancelAsync(o, "left", TestEnv.User));
+    }
+
+    [Fact]
+    public async Task Buyback_is_optional_and_cannot_weigh_more_than_its_grain()
+    {
+        using var env = await TestEnv.CreateAsync();
+        using var _ = env.As(env.OrgA);
+        var (order, _, _) = await WheatAndMustardAsync(env);
+        await env.Orders.BillAsync(order, 0, TestEnv.User);
+        var khal = new InventoryItem { Name = "Khal", Unit = "kg", BuybackRate = 2 };
+        env.Db.InventoryItems.Add(khal);
+        await env.Db.SaveChangesAsync();
+        var mustard = order.Lines[1]; // 15 kg
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => env.Ops.BuybackAsync(order.CustomerId, khal.Id, 16, null, null, order.Id, TestEnv.User, mustard.Id));
+        await Assert.ThrowsAsync<BusinessRuleException>(() => env.Ops.BuybackAsync(order.CustomerId, khal.Id, 5, null, null, order.Id, TestEnv.User)); // two grains: say which
+        await env.Ops.BuybackAsync(order.CustomerId, khal.Id, 10, null, null, order.Id, TestEnv.User, mustard.Id);
+        await Assert.ThrowsAsync<BusinessRuleException>(() => env.Ops.BuybackAsync(order.CustomerId, khal.Id, 6, null, null, order.Id, TestEnv.User, mustard.Id)); // 10 + 6 > 15
+        await env.Ops.BuybackAsync(order.CustomerId, khal.Id, 5, null, null, order.Id, TestEnv.User, mustard.Id); // exactly 15
+        Assert.Equal(135m - 30m, order.Outstanding);
+    }
+
+    [Fact]
+    public async Task Ready_grain_is_handed_over_now_and_the_rest_later()
+    {
+        using var env = await TestEnv.CreateAsync();
+        using var _ = env.As(env.OrgA);
+        var (order, _, _) = await WheatAndMustardAsync(env);
+        var wheat = order.Lines[0];
+        var mustard = order.Lines[1];
+        await env.Orders.SetLineStatusAsync(order, wheat.Id, LineStatus.Done);
+        await env.Orders.SetLineStatusAsync(order, mustard.Id, LineStatus.Grinding);
+
+        await env.Orders.AdvanceAsync(order, OrderStatus.Delivered); // hands over only the wheat
+        Assert.Equal(LineStatus.Delivered, wheat.Status);
+        Assert.NotNull(wheat.DeliveredAt);
+        Assert.Equal(LineStatus.Grinding, mustard.Status);
+        Assert.Equal(OrderStatus.Grinding, order.Status);
+        await Assert.ThrowsAsync<BusinessRuleException>(() => env.Orders.AdvanceAsync(order, OrderStatus.Delivered)); // nothing ready
+
+        await env.Orders.SetLineStatusAsync(order, mustard.Id, LineStatus.Done);
+        Assert.Equal(OrderStatus.Ready, order.Status);
+        await env.Orders.SetLineStatusAsync(order, mustard.Id, LineStatus.Delivered);
+        Assert.Equal(OrderStatus.Delivered, order.Status);
+        Assert.NotNull(order.DeliveredAt);
+
+        await env.Orders.SetLineStatusAsync(order, mustard.Id, LineStatus.Done, TestEnv.User); // undo one hand-over
+        Assert.Equal(OrderStatus.Ready, order.Status);
+        Assert.Null(order.DeliveredAt);
+    }
+
+    [Fact]
+    public async Task Pay_for_one_grain_now_and_the_other_later()
+    {
+        using var env = await TestEnv.CreateAsync();
+        using var _ = env.As(env.OrgA);
+        var (order, _, _) = await WheatAndMustardAsync(env);
+        await env.Orders.BillAsync(order, 0, TestEnv.User);
+        await env.Orders.CollectCashAsync(order, 60, TestEnv.User); // wheat only
+        Assert.Equal(PaymentState.Partial, order.PaymentState);
+        Assert.Equal(75m, order.Outstanding);
+        await env.Orders.CollectCashAsync(order, 75, TestEnv.User); // mustard, on the second visit
+        Assert.Equal(PaymentState.Paid, order.PaymentState);
+        Assert.Equal(0m, await env.Ledger.CustomerUdhaarAsync(order.CustomerId));
+    }
+
+    [Fact]
+    public async Task Paying_bill_plus_old_udhaar_clears_both()
+    {
+        using var env = await TestEnv.CreateAsync();
+        using var _ = env.As(env.OrgA);
+        var old = await env.BilledOrderAsync(25);   // ₹60 left unpaid earlier
+        var (order, _, _) = await WheatAndMustardAsync(env);
+        Assert.Equal(old.CustomerId, order.CustomerId);
+        await env.Orders.BillAsync(order, 0, TestEnv.User); // ₹135 today
+
+        await Assert.ThrowsAsync<BusinessRuleException>(() => env.Orders.CollectCashAsync(order, 196, TestEnv.User)); // more than 195 owed
+        var p = await env.Orders.CollectCashAsync(order, 195, TestEnv.User);
+        Assert.Equal(60m, p.OldUdhaarPart);
+        Assert.Equal(0m, order.Outstanding);
+        var reloaded = await env.Db.GrindingOrders.FirstAsync(o => o.Id == old.Id);
+        Assert.Equal(0m, reloaded.Outstanding);
+        Assert.Equal(0m, await env.Ledger.CustomerUdhaarAsync(order.CustomerId));
+        var tb = await env.Ledger.TrialBalanceAsync();
+        Assert.Equal(tb.Sum(a => a.Debit), tb.Sum(a => a.Credit));
+    }
+
+    [Fact]
+    public async Task Going_back_to_received_lets_the_order_be_changed()
+    {
+        using var env = await TestEnv.CreateAsync();
+        using var _ = env.As(env.OrgA);
+        var (order, wheatRate, _) = await WheatAndMustardAsync(env);
+        await env.Orders.AdvanceAsync(order, OrderStatus.Ready);
+        await env.Orders.AdvanceAsync(order, OrderStatus.Delivered);
+
+        await env.Orders.StepBackToAsync(order, OrderStatus.Intake, "wrong weight", TestEnv.User);
+        Assert.Equal(OrderStatus.Intake, order.Status);
+        Assert.All(order.Lines, l => Assert.Equal(LineStatus.Waiting, l.Status));
+
+        await env.Orders.UpdateAsync(order, order.CustomerId, [new(wheatRate, 30, null, null)], "fixed", TestEnv.User);
+        Assert.Single(order.Lines);
+        Assert.Equal(72m, order.Total); // 30 × 2.40
+
+        await env.Orders.BillAsync(order, 0, TestEnv.User);
+        await Assert.ThrowsAsync<BusinessRuleException>(() => env.Orders.UpdateAsync(order, order.CustomerId, [new(wheatRate, 20, null, null)], null, TestEnv.User));
     }
 }

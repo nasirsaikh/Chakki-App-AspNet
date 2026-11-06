@@ -19,11 +19,11 @@ public class OrderForm
 }
 
 public record OrderListModel(List<GrindingOrder> Orders, string? Q, string? Status);
-public record OrderNewModel(List<Customer> Customers, List<RateCard> Rates, int? CustomerId);
-public record OrderDetailModel(GrindingOrder Order, List<RateCard> Rates, List<PaymentGateway> Gateways, List<InventoryItem> BuybackItems, List<Buyback> Buybacks);
+public record OrderNewModel(List<Customer> Customers, List<RateCard> Rates, int? CustomerId, GrindingOrder? Editing = null);
+public record OrderDetailModel(GrindingOrder Order, List<RateCard> Rates, List<PaymentGateway> Gateways, List<InventoryItem> BuybackItems, List<Buyback> Buybacks, decimal OtherUdhaar);
 
 [Route("orders")]
-public class OrdersController(AppDbContext db, OrderService orders, PaymentService payments) : AppController
+public class OrdersController(AppDbContext db, OrderService orders, PaymentService payments, LedgerService ledger) : AppController
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(string? q, string? status)
@@ -53,18 +53,42 @@ public class OrdersController(AppDbContext db, OrderService orders, PaymentServi
         View(new OrderNewModel(await db.Customers.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync(),
             await db.RateCards.Include(r => r.TaxRate).Where(r => r.IsActive).OrderBy(r => r.Id).ToListAsync(), customerId));
 
+    /// <summary>Change an order that was sent back to Received (customer, grains, weights, rates).</summary>
+    [Authorize(Policy = Roles.Floor), HttpGet("{id:int}/edit")]
+    public async Task<IActionResult> Edit(int id)
+    {
+        var order = await LoadAsync(id);
+        if (order.Status != OrderStatus.Intake || order.BilledAt != null)
+            throw new BusinessRuleException("Go back to Received (and remove the bill) before changing the order.");
+        return View("New", new OrderNewModel(await db.Customers.Where(c => c.IsActive || c.Id == order.CustomerId).OrderBy(c => c.Name).ToListAsync(),
+            await db.RateCards.Include(r => r.TaxRate).Where(r => r.IsActive || order.Lines.Select(l => l.RateCardId).Contains(r.Id)).OrderBy(r => r.Id).ToListAsync(),
+            order.CustomerId, order));
+    }
+
+    [Authorize(Policy = Roles.Floor), HttpPost("{id:int}/edit"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Update(int id, OrderForm form)
+    {
+        var order = await LoadAsync(id);
+        var customerId = await CustomerFromFormAsync(form);
+        await orders.UpdateAsync(order, customerId, form.Lines, form.Notes, UserId);
+        Flash(T["Order {0} updated.", order.Ref]);
+        return Redirect($"/orders/{id}");
+    }
+
+    private async Task<int> CustomerFromFormAsync(OrderForm form)
+    {
+        if (form.CustomerId != 0) return form.CustomerId;
+        if (string.IsNullOrWhiteSpace(form.NewCustomerName)) throw new BusinessRuleException("Choose a customer or type a new customer's name.");
+        var c = new Customer { Name = form.NewCustomerName.Trim(), Phone = form.NewCustomerPhone?.Trim(), Village = form.NewCustomerVillage?.Trim(), Kind = CustomerKind.Temporary };
+        db.Customers.Add(c);
+        await db.SaveChangesAsync();
+        return c.Id;
+    }
+
     [Authorize(Policy = Roles.Floor), HttpPost("new"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(OrderForm form)
     {
-        var customerId = form.CustomerId;
-        if (customerId == 0)
-        {
-            if (string.IsNullOrWhiteSpace(form.NewCustomerName)) throw new BusinessRuleException("Choose a customer or type a new customer's name.");
-            var c = new Customer { Name = form.NewCustomerName.Trim(), Phone = form.NewCustomerPhone?.Trim(), Village = form.NewCustomerVillage?.Trim(), Kind = CustomerKind.Temporary };
-            db.Customers.Add(c);
-            await db.SaveChangesAsync();
-            customerId = c.Id;
-        }
+        var customerId = await CustomerFromFormAsync(form);
         var order = await orders.CreateAsync(customerId, form.Lines, form.Notes, UserId);
         Flash(T["Order {0} created.", order.Ref]);
         return Redirect($"/orders/{order.Id}");
@@ -76,7 +100,8 @@ public class OrdersController(AppDbContext db, OrderService orders, PaymentServi
         var order = await LoadAsync(id);
         return View(new OrderDetailModel(order, await db.RateCards.ToListAsync(), await payments.ActiveGatewaysAsync(),
             await db.InventoryItems.Where(i => i.BuybackRate > 0).OrderByDescending(i => i.BuybackRate).ThenBy(i => i.Name).ToListAsync(),
-            await db.Buybacks.Include(b => b.Item).Where(b => b.GrindingOrderId == id).OrderBy(b => b.Id).ToListAsync()));
+            await db.Buybacks.Include(b => b.Item).Where(b => b.GrindingOrderId == id).OrderBy(b => b.Id).ToListAsync(),
+            await ledger.CustomerUdhaarAsync(order.CustomerId) - order.Outstanding));
     }
 
     /// <summary>Marks one grain / service as started or done; the order status follows its lines.</summary>
@@ -90,11 +115,12 @@ public class OrdersController(AppDbContext db, OrderService orders, PaymentServi
 
     /// <summary>Undo the last step (hand-over, ready, grinding) when it was marked by mistake.</summary>
     [Authorize(Policy = Roles.Floor), HttpPost("{id:int}/back"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> Back(int id, string reason)
+    public async Task<IActionResult> Back(int id, string reason, OrderStatus? to)
     {
         var order = await LoadAsync(id);
-        await orders.StepBackAsync(order, reason, UserId);
-        Flash(T["Moved back one step."]);
+        if (to is { } target) await orders.StepBackToAsync(order, target, reason, UserId);
+        else await orders.StepBackAsync(order, reason, UserId);
+        Flash(T["Moved back."]);
         return Redirect($"/orders/{id}");
     }
 

@@ -114,14 +114,14 @@ public class StockController(AppDbContext db, OperationsService ops, LedgerServi
     }
 
     [HttpPost("/buyback"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> DoBuyback(int customerId, int itemId, decimal quantity, decimal? rate, string? reason, int? orderId, bool fromOrder = false)
+    public async Task<IActionResult> DoBuyback(int customerId, int itemId, decimal quantity, decimal? rate, string? reason, int? orderId, bool fromOrder = false, int? lineId = null)
     {
         if (orderId is > 0)
         {
             var order = await db.GrindingOrders.FindAsync(orderId) ?? throw new KeyNotFoundException();
             customerId = order.CustomerId;
         }
-        var bb = await ops.BuybackAsync(customerId, itemId, quantity, rate, reason, orderId is > 0 ? orderId : null, UserId);
+        var bb = await ops.BuybackAsync(customerId, itemId, quantity, rate, reason, orderId is > 0 ? orderId : null, UserId, lineId);
         Flash(T["Buyback saved: value {0}, fee adjusted {1}, cash to customer {2}.", Fmt.Rs(bb.Value), Fmt.Rs(bb.FeeAdjusted), Fmt.Rs(bb.CashPaid)]);
         return Redirect(fromOrder && orderId is > 0 ? $"/orders/{orderId}" : "/buyback");
     }

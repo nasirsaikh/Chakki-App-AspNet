@@ -47,7 +47,7 @@ public class PaymentService(AppDbContext db, OrderService orders, SecretProtecto
     /// <summary>Creates a pending online payment (UPI QR or card) for part or all of the outstanding amount.</summary>
     public async Task<Payment> StartOnlineAsync(GrindingOrder order, int gatewayId, decimal amount, PaymentMethod method, string? userId)
     {
-        OrderService.EnsurePayable(order, amount);
+        await orders.EnsurePayableAsync(order, amount);
         var gw = await db.PaymentGateways.FirstOrDefaultAsync(g => g.Id == gatewayId && g.IsActive)
                  ?? throw new BusinessRuleException("Choose an active payment gateway (Settings → Payments).");
         if (method == PaymentMethod.UpiQr && string.IsNullOrWhiteSpace(gw.UpiVpa) && gw.Provider != GatewayProvider.Razorpay)
