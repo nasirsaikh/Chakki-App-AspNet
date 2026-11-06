@@ -1,0 +1,12 @@
+@model OrderStatus
+@{
+    var (css, label) = Model switch
+    {
+        OrderStatus.Intake => ("ca-pill-info", "Received"),
+        OrderStatus.Grinding => ("ca-pill-primary", "Grinding"),
+        OrderStatus.Ready => ("ca-pill-warning", "Ready"),
+        OrderStatus.Delivered => ("ca-pill-success", "Delivered"),
+        _ => ("", "Cancelled"),
+    };
+}
+<span class="ca-pill @css">@T[label]</span>

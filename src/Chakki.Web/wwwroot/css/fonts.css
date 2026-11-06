@@ -1,0 +1,20 @@
+/* Self-hosted variable fonts (latin subset, SIL Open Font License; see static/vendor/fonts/LICENSE-*.txt).
+ * Browsers download only the family a theme uses. */
+@font-face { font-family: "Source Sans 3 Variable"; font-style: normal; font-display: swap; font-weight: 200 900;
+  src: url("../vendor/fonts/source-sans-3-latin-wght-normal.woff2") format("woff2-variations"); }
+@font-face { font-family: "Inter Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../vendor/fonts/inter-latin-wght-normal.woff2") format("woff2-variations"); }
+@font-face { font-family: "Roboto Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../vendor/fonts/roboto-latin-wght-normal.woff2") format("woff2-variations"); }
+@font-face { font-family: "Open Sans Variable"; font-style: normal; font-display: swap; font-weight: 300 800;
+  src: url("../vendor/fonts/open-sans-latin-wght-normal.woff2") format("woff2-variations"); }
+@font-face { font-family: "Nunito Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 1000;
+  src: url("../vendor/fonts/nunito-sans-latin-wght-normal.woff2") format("woff2-variations"); }
+@font-face { font-family: "Plus Jakarta Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../vendor/fonts/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2-variations"); }
+@font-face { font-family: "Manrope Variable"; font-style: normal; font-display: swap; font-weight: 200 800;
+  src: url("../vendor/fonts/manrope-latin-wght-normal.woff2") format("woff2-variations"); }
+@font-face { font-family: "Figtree Variable"; font-style: normal; font-display: swap; font-weight: 300 900;
+  src: url("../vendor/fonts/figtree-latin-wght-normal.woff2") format("woff2-variations"); }
+@font-face { font-family: "IBM Plex Sans Variable"; font-style: normal; font-display: swap; font-weight: 100 700;
+  src: url("../vendor/fonts/ibm-plex-sans-latin-wght-normal.woff2") format("woff2-variations"); }

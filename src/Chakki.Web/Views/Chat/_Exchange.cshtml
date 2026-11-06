@@ -1,0 +1,24 @@
+@model Chakki.Web.Controllers.ChatExchange
+@{
+    var table = Model.Answer.DataJson == null ? null : System.Text.Json.JsonSerializer.Deserialize<Chakki.Web.Services.Chat.ChatTable>(Model.Answer.DataJson);
+}
+<div class="ca-chat-exchange">
+  <div class="ca-chat-q"><div class="ca-chat-bubble" lang="@Model.Question.Language">@Model.Question.Content</div><time class="ca-chat-time">@Fmt.Date(Model.Question.CreatedAt)</time></div>
+  <div class="ca-chat-a">
+    <div class="ca-chat-meta"><i class="bi bi-stars" aria-hidden="true"></i> <strong>@T["Assistant"]</strong> <span class="ca-chat-provider">· @(Model.Answer.Provider == "claude" ? "Claude" : T["Offline rules"])</span></div>
+    <div class="ca-chat-answer" lang="@Model.Answer.Language">
+      <p>@Model.Answer.Content</p>
+      @if (table is { Rows.Count: > 0 })
+      {
+        <div class="ca-table-wrap"><table class="table table-sm mb-0">
+          <thead><tr>@foreach (var c in table.Columns) { <th>@c</th> }</tr></thead>
+          <tbody>@foreach (var r in table.Rows) { <tr>@foreach (var v in r) { <td>@v</td> }</tr> }</tbody>
+        </table></div>
+      }
+    </div>
+  </div>
+</div>
+@if (ViewData["SessionId"] is int sid)
+{
+  <input type="hidden" id="chat-session" name="session" value="@sid" hx-swap-oob="true">
+}

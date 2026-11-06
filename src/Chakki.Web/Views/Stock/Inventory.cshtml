@@ -1,0 +1,46 @@
+@model List<InventoryItem>
+@{ ViewData["Title"] = T["Inventory"].Value; ViewData["Lead"] = T["Raw grain, packed atta, oil, Khal and other stock. Quantities change through purchases, sales, buyback, production and wastage."].Value; var moves = (List<StockMovement>)ViewBag.Movements; var canEdit = User.IsInRole("Owner") || User.IsInRole("Manager"); }
+<div class="ca-stats">
+  <div class="ca-stat"><span class="label">@T["Stock value"]</span><span class="value">@Fmt.Rs(Model.Sum(i => i.Quantity * i.AvgCost))</span></div>
+  <div class="ca-stat ca-stat-warn"><span class="label">@T["Low stock items"]</span><span class="value">@Model.Count(i => i.Quantity <= i.ReorderLevel)</span></div>
+</div>
+<div class="row g-3">
+  <div class="col-xl-8">
+    <div class="card mb-3"><div class="ca-table-wrap"><table class="table table-hover">
+      <thead><tr><th>@T["Item"]</th><th>@T["Category"]</th><th class="num">@T["Quantity"]</th><th class="num">@T["Avg cost"]</th><th class="num">@T["Sale price"]</th><th class="num">@T["Buyback rate"]</th><th class="num">@T["Value"]</th></tr></thead>
+      <tbody>@foreach (var i in Model) {
+        <tr><td>@Fmt.Name(i)</td><td>@T[i.Category.ToString()]</td><td class="num">@if (i.Quantity <= i.ReorderLevel) { <span class="ca-pill ca-pill-warning">@Fmt.Qty(i.Quantity) @i.Unit</span> } else { <span>@Fmt.Qty(i.Quantity) @i.Unit</span> }</td>
+          <td class="num">@Fmt.Rs(i.AvgCost)</td><td class="num">@Fmt.Rs(i.SalePrice)</td><td class="num">@Fmt.Rs(i.BuybackRate)</td><td class="num">@Fmt.Rs(i.Quantity * i.AvgCost)</td></tr> }</tbody>
+    </table></div></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">@T["Recent stock movements"]</h2></div>
+      @if (moves.Count == 0) { <div class="ca-empty">@T["No movements yet."]</div> }
+      else
+      {
+        <div class="ca-table-wrap"><table class="table table-sm">
+          <thead><tr><th>@T["Date"]</th><th>@T["Item"]</th><th>@T["Type"]</th><th class="num">@T["Quantity"]</th><th>@T["Note"]</th></tr></thead>
+          <tbody>@foreach (var m in moves) { <tr><td>@Fmt.Date(m.Date)</td><td>@Fmt.Name(m.Item)</td><td>@T[m.Kind.ToString()]</td><td class="num @(m.Quantity < 0 ? "text-danger" : "text-success")">@(m.Quantity > 0 ? "+" : "")@Fmt.Qty(m.Quantity)</td><td>@m.Note</td></tr> }</tbody>
+        </table></div>
+      }
+    </div>
+  </div>
+  @if (canEdit)
+  {
+    <div class="col-xl-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["Add or edit item"]</h2></div><div class="card-body">
+      <form asp-antiforgery="true" method="post" action="/inventory/save">
+        <label class="form-label" for="id">@T["Item"]</label>
+        <select class="form-select mb-2" id="id" name="id"><option value="0">@T["— New item —"]</option>@foreach (var i in Model) { <option value="@i.Id">@i.Name</option> }</select>
+        <div class="row g-2">
+          <div class="col-6"><label class="form-label" for="name">@T["Name (English)"]</label><input class="form-control" id="name" name="name" required></div>
+          <div class="col-6"><label class="form-label" for="nameHi">@T["Name (Hindi)"]</label><input class="form-control" id="nameHi" name="nameHi" lang="hi"></div>
+          <div class="col-6"><label class="form-label" for="category">@T["Category"]</label><select class="form-select" id="category" name="category">@foreach (var c in Enum.GetValues<ItemCategory>()) { <option value="@c">@T[c.ToString()]</option> }</select></div>
+          <div class="col-6"><label class="form-label" for="unit">@T["Unit"]</label><input class="form-control" id="unit" name="unit" value="kg"></div>
+          <div class="col-4"><label class="form-label" for="salePrice">@T["Sale price"]</label><input class="form-control" id="salePrice" name="salePrice" type="number" step="0.01" min="0" value="0"></div>
+          <div class="col-4"><label class="form-label" for="buybackRate">@T["Buyback rate"]</label><input class="form-control" id="buybackRate" name="buybackRate" type="number" step="0.01" min="0" value="0"></div>
+          <div class="col-4"><label class="form-label" for="reorderLevel">@T["Reorder at"]</label><input class="form-control" id="reorderLevel" name="reorderLevel" type="number" step="0.01" min="0" value="0"></div>
+        </div>
+        <p class="form-text">@T["Choosing an existing item replaces its details with what you type here."]</p>
+        <button class="btn btn-primary w-100">@T["Save item"]</button>
+      </form>
+    </div></div></div>
+  }
+</div>

@@ -1,0 +1,47 @@
+@model Chakki.Web.Controllers.ChatPageModel
+@{
+    ViewData["Title"] = "";
+    var hi = T.Hi();
+    var suggestions = hi
+        ? new[] { "आज की पिसाई कितनी हुई?", "सबसे ज़्यादा उधार किसका है?", "कौन से ऑर्डर तैयार हैं?", "कम स्टॉक दिखाओ", "इस महीने का खर्च", "मरम्मत कब है?" }
+        : new[] { "How much did we grind today?", "Who owes the most?", "Which orders are pending?", "Show low stock", "Expenses this month", "What maintenance is due?" };
+}
+<div class="ca-chat">
+  <aside class="ca-chat-side card" aria-label="@T["Conversations"]">
+    <a class="btn btn-primary btn-sm mb-2" href="/chat"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["New conversation"]</a>
+    <div class="ca-chat-side-title">@T["Your conversations"]</div>
+    <nav class="ca-chat-sessions">
+      @foreach (var s in Model.Sessions) { <a class="@(Model.Current?.Id == s.Id ? "active" : "")" href="/chat?session=@s.Id">@s.Title<small>@Fmt.Date(s.CreatedAt)</small></a> }
+      @if (Model.Sessions.Count == 0) { <small class="text-body-secondary">@T["None yet."]</small> }
+    </nav>
+  </aside>
+  <section class="ca-chat-main card">
+    <header class="ca-chat-header">
+      <div>
+        <h1 class="ca-chat-title"><i class="bi bi-stars" aria-hidden="true"></i> @T["Ask about your chakki"]</h1>
+        <p>@T["Ask in Hindi, Hinglish or English. You get a short answer and the figures behind it."]</p>
+      </div>
+      <span class="ca-pill ca-pill-success" title="@T["The assistant only reads this chakki's data. It cannot change anything."]">@T["Read-only"] · @(Model.Provider == "claude" ? "Claude" : T["Offline rules"])</span>
+    </header>
+    <div class="ca-chat-scroll" id="chat-scroll">
+      <div id="chat-thread" aria-live="polite">
+        @if (Model.Messages.Count == 0)
+        {
+          <div class="ca-chat-empty" id="chat-empty"><i class="bi bi-chat-square-text" aria-hidden="true"></i><h2>@T["What would you like to know?"]</h2><p>@T["For example: \"Ramesh ka udhaar kitna hai?\" or \"How much did we grind this week?\""]</p></div>
+        }
+        @for (var i = 0; i + 1 < Model.Messages.Count; i += 2)
+        {
+          <partial name="_Exchange" model="new Chakki.Web.Controllers.ChatExchange(Model.Messages[i], Model.Messages[i + 1])" />
+        }
+      </div>
+      <div id="chat-indicator" class="htmx-indicator ca-chat-thinking"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> @T["Finding the answer…"]</div>
+    </div>
+    <div class="ca-chat-suggestions" aria-label="@T["Suggested questions"]">@foreach (var q in suggestions) { <button class="btn btn-sm btn-outline-secondary" type="button" data-ca-suggest="@q">@q</button> }</div>
+    <form class="ca-chat-composer" hx-post="/chat/ask" hx-target="#chat-thread" hx-swap="beforeend" hx-indicator="#chat-indicator" data-ca-reset-on-success data-ca-chat-form>
+      <input type="hidden" id="chat-session" name="session" value="@Model.Current?.Id">
+      <label class="visually-hidden" for="chat-q">@T["Your question"]</label>
+      <textarea id="chat-q" name="question" rows="2" maxlength="1000" required placeholder="@T["Type your question…"]" data-ca-submit-on-enter lang="@(hi ? "hi" : "en")"></textarea>
+      <button class="btn btn-primary rounded-circle ca-chat-send" type="submit" aria-label="@T["Send"]"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
+    </form>
+  </section>
+</div>

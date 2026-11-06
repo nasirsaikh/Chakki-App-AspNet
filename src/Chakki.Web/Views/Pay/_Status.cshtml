@@ -1,0 +1,27 @@
+@model Chakki.Web.Controllers.PayModel
+@if (Model.Payment.Status == SettlementStatus.Settled)
+{
+  <div class="ca-paid" role="status"><i class="bi bi-patch-check-fill" aria-hidden="true"></i><h2 class="h3 mb-0">@T["Paid & cleared"]</h2><p class="mb-0">@T["Thank you! The payment has been received."]</p></div>
+}
+else if (Model.Payment.Status != SettlementStatus.Pending)
+{
+  <div class="ca-empty"><i class="bi bi-x-circle"></i>@T["This payment request is closed. Ask the chakki for a new one."]</div>
+}
+else
+{
+  <div hx-get="/pay/@Model.Payment.Reference/status" hx-trigger="every 3s" hx-target="#pay-status" hx-swap="innerHTML">
+    @if (Model.QrSvg != null)
+    {
+      <div class="ca-qr">
+        <p class="mb-0">@T["Scan with any UPI app (PhonePe, Google Pay, Paytm, BHIM)"]</p>
+        @Html.Raw(Model.QrSvg)
+        <a class="btn btn-outline-primary d-md-none" href="@Model.UpiUri">@T["Open UPI app"]</a>
+        <p class="small text-body-secondary mb-0"><span class="spinner-grow spinner-grow-sm text-warning" aria-hidden="true"></span> @T["Waiting for payment… this screen updates by itself."]</p>
+      </div>
+    }
+    else
+    {
+      <p class="text-center small text-body-secondary"><span class="spinner-grow spinner-grow-sm text-warning" aria-hidden="true"></span> @T["Waiting for payment… this screen updates by itself."]</p>
+    }
+  </div>
+}

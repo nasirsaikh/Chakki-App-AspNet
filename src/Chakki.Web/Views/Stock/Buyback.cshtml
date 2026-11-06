@@ -1,0 +1,26 @@
+@model List<Buyback>
+@{ ViewData["Title"] = T["Buyback"].Value; ViewData["Lead"] = T["Buy Khal or other by-product from customers. The value first pays their grinding fee; the rest is given in cash."].Value; var l = (Chakki.Web.Controllers.StockLists)ViewBag.Lists; var orders = (List<GrindingOrder>)ViewBag.Orders; }
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card">
+    @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-arrow-left-right"></i>@T["No buybacks yet."]</div> }
+    else
+    {
+      <div class="ca-table-wrap"><table class="table">
+        <thead><tr><th>@T["Date"]</th><th>@T["Customer"]</th><th>@T["Item"]</th><th class="num">@T["Quantity"]</th><th class="num">@T["Rate"]</th><th class="num">@T["Value"]</th><th class="num">@T["Fee adjusted"]</th><th class="num">@T["Cash paid"]</th></tr></thead>
+        <tbody>@foreach (var b in Model) { <tr><td>@Fmt.Date(b.Date)</td><td>@b.Customer!.Name</td><td>@Fmt.Name(b.Item)</td><td class="num">@Fmt.Qty(b.Quantity)</td><td class="num">@Fmt.Rs(b.AppliedRate)@if (b.OverrideReason != null) { <i class="bi bi-pencil ms-1" title="@b.OverrideReason"></i> }</td><td class="num">@Fmt.Rs(b.Value)</td><td class="num">@Fmt.Rs(b.FeeAdjusted)</td><td class="num">@Fmt.Rs(b.CashPaid)</td></tr> }</tbody>
+      </table></div>
+    }
+  </div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["New buyback"]</h2></div><div class="card-body">
+    <form asp-antiforgery="true" method="post" action="/buyback">
+      <label class="form-label" for="bo">@T["Against order (optional)"]</label>
+      <select class="form-select mb-2" id="bo" name="orderId"><option value="">@T["No order — pay all in cash"]</option>@foreach (var o in orders) { <option value="@o.Id">@o.Ref · @o.Customer!.Name — @Fmt.Rs(o.Outstanding)</option> }</select>
+      <label class="form-label" for="bc">@T["Customer"]</label><select class="form-select mb-2" id="bc" name="customerId">@foreach (var c in l.Customers) { <option value="@c.Id">@c.Name</option> }</select>
+      <label class="form-label" for="bi">@T["Item"]</label><select class="form-select mb-2" id="bi" name="itemId">@foreach (var i in l.Items.Where(i => i.BuybackRate > 0 || i.Category == ItemCategory.ByProduct)) { <option value="@i.Id">@Fmt.Name(i) — @Fmt.Rs(i.BuybackRate)/@i.Unit</option> }</select>
+      <div class="row g-2 mb-2"><div class="col-6"><label class="form-label" for="bq">@T["Quantity"]</label><input class="form-control" id="bq" name="quantity" type="number" step="0.01" min="0.01" required inputmode="decimal"></div>
+        <div class="col-6"><label class="form-label" for="br">@T["Rate (optional)"]</label><input class="form-control" id="br" name="rate" type="number" step="0.01" min="0" inputmode="decimal"></div></div>
+      <label class="form-label" for="bre">@T["Reason if rate changed"]</label><input class="form-control mb-3" id="bre" name="reason" maxlength="200">
+      <button class="btn btn-primary w-100">@T["Save buyback"]</button>
+    </form>
+  </div></div></div>
+</div>

@@ -1,0 +1,26 @@
+@model List<Chakki.Web.Controllers.UserRow>
+@{ ViewData["Title"] = T["Users"].Value; ViewData["Lead"] = T["Owner: everything. Manager: operations. Operator: counter and floor. Accountant: money and books."].Value; }
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card"><div class="list-group list-group-flush">
+    @foreach (var r in Model)
+    {
+      <div class="list-group-item">
+        <form asp-antiforgery="true" method="post" action="/users/@r.User.Id" class="row g-2 align-items-end">
+          <div class="col-md-4"><strong>@r.User.FullName</strong><br><small class="text-body-secondary">@r.User.Email</small></div>
+          <div class="col-md-3"><label class="form-label small" for="role-@r.User.Id">@T["Role"]</label><select class="form-select form-select-sm" id="role-@r.User.Id" name="role">@foreach (var role in Roles.TenantRoles) { <option value="@role" selected="@(role == r.Role)">@T[role]</option> }</select></div>
+          <div class="col-md-3"><label class="form-label small" for="pw-@r.User.Id">@T["New password"]</label><input class="form-control form-control-sm" id="pw-@r.User.Id" name="newPassword" type="password" minlength="8" autocomplete="new-password"></div>
+          <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="isActive" value="true" id="act-@r.User.Id" checked="@r.User.IsActive"><label class="form-check-label small" for="act-@r.User.Id">@T["Active"]</label></div><button class="btn btn-sm btn-outline-primary w-100 mt-1">@T["Save"]</button></div>
+        </form>
+      </div>
+    }
+  </div></div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["Add user"]</h2></div><div class="card-body">
+    <form asp-antiforgery="true" method="post" action="/users" autocomplete="off">
+      <label class="form-label" for="un">@T["Name"]</label><input class="form-control mb-2" id="un" name="fullName" required>
+      <label class="form-label" for="ue">@T["Email"]</label><input class="form-control mb-2" id="ue" name="email" type="email" required>
+      <label class="form-label" for="up">@T["Password"]</label><input class="form-control mb-2" id="up" name="password" type="password" minlength="8" required autocomplete="new-password">
+      <label class="form-label" for="ur">@T["Role"]</label><select class="form-select mb-3" id="ur" name="role">@foreach (var role in Roles.TenantRoles.Skip(1)) { <option value="@role">@T[role]</option> }<option value="Owner">@T["Owner"]</option></select>
+      <button class="btn btn-primary w-100">@T["Add user"]</button>
+    </form>
+  </div></div></div>
+</div>

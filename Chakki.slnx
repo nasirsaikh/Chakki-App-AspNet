@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Chakki.Web/Chakki.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Chakki.Tests/Chakki.Tests.csproj" />
+  </Folder>
+</Solution>

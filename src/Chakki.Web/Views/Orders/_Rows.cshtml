@@ -1,0 +1,27 @@
+@model Chakki.Web.Controllers.OrderListModel
+@if (Model.Orders.Count == 0)
+{
+  <div class="ca-empty"><i class="bi bi-basket"></i>@T["No orders found."] <a href="/orders/new">@T["Create the first order"]</a></div>
+}
+else
+{
+  <div class="ca-table-wrap">
+    <table class="table table-hover">
+      <thead><tr><th>@T["Order"]</th><th>@T["Customer"]</th><th class="num">@T["Weight"]</th><th class="num">@T["Amount"]</th><th>@T["Status"]</th><th>@T["Payment"]</th><th>@T["Date"]</th></tr></thead>
+      <tbody>
+      @foreach (var o in Model.Orders)
+      {
+        <tr>
+          <td><a class="ca-ref" href="/orders/@o.Id">@o.Ref</a></td>
+          <td>@o.Customer!.Name <small class="text-body-secondary">@o.Customer.Village</small></td>
+          <td class="num">@Fmt.Qty(o.Lines.Sum(l => l.WeightKg)) kg</td>
+          <td class="num">@Fmt.Rs(o.Total)</td>
+          <td><partial name="_OrderStatus" model="o.Status" /></td>
+          <td><partial name="_PaymentState" model="o.PaymentState" /></td>
+          <td>@Fmt.Date(o.CreatedAt)</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+}

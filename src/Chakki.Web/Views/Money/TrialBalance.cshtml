@@ -1,0 +1,7 @@
+@model List<Chakki.Web.Services.AccountBalance>
+@{ ViewData["Title"] = T["Trial balance"].Value; ViewData["Lead"] = T["Total debits always equal total credits."].Value; }
+<div class="card"><div class="ca-table-wrap"><table class="table">
+  <thead><tr><th>@T["Code"]</th><th>@T["Account"]</th><th class="num">@T["Debit"]</th><th class="num">@T["Credit"]</th></tr></thead>
+  <tbody>@foreach (var a in Model) { var bal = a.Debit - a.Credit; <tr><td>@a.Account.Code</td><td>@Fmt.Name(a.Account.Name, a.Account.NameHi)</td><td class="num">@(bal > 0 ? Fmt.Rs(bal) : "")</td><td class="num">@(bal < 0 ? Fmt.Rs(-bal) : "")</td></tr> }</tbody>
+  <tfoot><tr><th colspan="2">@T["Total"]</th><th class="num">@Fmt.Rs(Model.Where(a => a.Debit > a.Credit).Sum(a => a.Debit - a.Credit))</th><th class="num">@Fmt.Rs(Model.Where(a => a.Credit > a.Debit).Sum(a => a.Credit - a.Debit))</th></tr></tfoot>
+</table></div></div>

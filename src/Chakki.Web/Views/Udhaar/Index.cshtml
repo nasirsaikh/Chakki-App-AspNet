@@ -1,0 +1,31 @@
+@model List<Chakki.Web.Controllers.UdhaarRow>
+@{ ViewData["Title"] = T["Udhaar"].Value; ViewData["Lead"] = T["Who owes how much. Receipts settle Old Udhaar first, then the oldest bills."].Value; }
+@section Actions { <a class="btn btn-outline-secondary" href="/udhaar/old"><i class="bi bi-clock-history" aria-hidden="true"></i> @T["Old Udhaar"]</a> }
+<div class="ca-stats">
+  <div class="ca-stat ca-stat-warn"><span class="label">@T["Total outstanding"]</span><span class="value">@Fmt.Rs(Model.Where(r => r.Balance > 0).Sum(r => r.Balance))</span></div>
+  <div class="ca-stat"><span class="label">@T["Customers with Udhaar"]</span><span class="value">@Model.Count(r => r.Balance > 0)</span></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card">
+      @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-emoji-smile"></i>@T["Nobody owes anything."]</div> }
+      else
+      {
+        <div class="ca-table-wrap"><table class="table table-hover">
+          <thead><tr><th>@T["Customer"]</th><th>@T["Village"]</th><th>@T["Phone"]</th><th class="num">@T["Old Udhaar"]</th><th class="num">@T["Total Udhaar"]</th></tr></thead>
+          <tbody>@foreach (var r in Model) { <tr><td><a href="/customers/@r.Customer.Id">@r.Customer.Name</a></td><td>@r.Customer.Village</td><td>@if (r.Customer.Phone != null) { <a href="tel:@r.Customer.Phone">@r.Customer.Phone</a> }</td><td class="num">@Fmt.Rs(r.OldUdhaar)</td><td class="num fw-semibold">@Fmt.Rs(r.Balance)</td></tr> }</tbody>
+        </table></div>
+      }
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card"><div class="card-header"><h2 class="card-title">@T["Receive Udhaar"]</h2></div><div class="card-body">
+      <form asp-antiforgery="true" method="post" action="/udhaar/receive">
+        <label class="form-label" for="rc">@T["Customer"]</label>
+        <select class="form-select mb-2" id="rc" name="customerId">@foreach (var r in Model.Where(r => r.Balance > 0)) { <option value="@r.Customer.Id">@r.Customer.Name — @Fmt.Rs(r.Balance)</option> }</select>
+        <label class="form-label" for="ra">@T["Amount"]</label>
+        <div class="input-group"><span class="input-group-text">₹</span><input class="form-control" id="ra" name="amount" type="number" step="0.01" min="0.01" required inputmode="decimal"><button class="btn btn-primary">@T["Save"]</button></div>
+      </form>
+    </div></div>
+  </div>
+</div>

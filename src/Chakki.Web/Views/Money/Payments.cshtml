@@ -1,0 +1,19 @@
+@model List<Payment>
+@{ ViewData["Title"] = T["Payments"].Value; ViewData["Lead"] = T["Cash, UPI QR, card and buyback payments against grinding bills."].Value; var status = ViewBag.Status as string; }
+<div class="ca-filter">
+  <a class="btn btn-sm @(status == null ? "btn-primary" : "btn-outline-secondary")" href="/payments">@T["All"]</a>
+  <a class="btn btn-sm @(status == "pending" ? "btn-primary" : "btn-outline-secondary")" href="/payments?status=pending">@T["Waiting"]</a>
+</div>
+<div class="card">
+  @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-qr-code"></i>@T["No payments yet."]</div> }
+  else
+  {
+    <div class="ca-table-wrap"><table class="table table-hover">
+      <thead><tr><th>@T["Date"]</th><th>@T["Order"]</th><th>@T["Customer"]</th><th>@T["Method"]</th><th class="num">@T["Amount"]</th><th>@T["Status"]</th><th></th></tr></thead>
+      <tbody>@foreach (var p in Model) {
+        <tr><td>@Fmt.Date(p.SettledAt ?? p.CreatedAt)</td><td><a class="ca-ref" href="/orders/@p.GrindingOrderId">@p.GrindingOrder!.Ref</a></td><td>@p.GrindingOrder.Customer?.Name</td><td>@T[p.Method.ToString()]</td><td class="num">@Fmt.Rs(p.Amount)</td>
+          <td><span class="ca-pill @(p.Status == SettlementStatus.Settled ? "ca-pill-success" : p.Status == SettlementStatus.Pending ? "ca-pill-warning" : "")">@T[p.Status.ToString()]</span></td>
+          <td>@if (p.Status == SettlementStatus.Pending && p.Method is PaymentMethod.UpiQr or PaymentMethod.Card) { <a href="/pay/@p.Reference">@T["Open"]</a> }</td></tr> }</tbody>
+    </table></div>
+  }
+</div>

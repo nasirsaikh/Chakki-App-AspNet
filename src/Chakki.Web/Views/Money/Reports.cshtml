@@ -1,0 +1,43 @@
+@model Chakki.Web.Controllers.ReportModel
+@{
+    ViewData["Title"] = T["Reports"].Value;
+    var income = Model.Balances.Where(b => b.Account.Type == AccountType.Income && b.Balance != 0).ToList();
+    var expense = Model.Balances.Where(b => b.Account.Type == AccountType.Expense && b.Balance != 0).ToList();
+    var net = income.Sum(b => b.Balance) - expense.Sum(b => b.Balance);
+}
+@section Actions { <a class="btn btn-outline-secondary" href="/reports/trial-balance">@T["Trial balance"]</a> }
+<form class="ca-filter" method="get">
+  <label class="visually-hidden" for="rf">@T["From"]</label><input class="form-control w-auto" id="rf" type="date" name="from" value="@Model.From.ToString("yyyy-MM-dd")">
+  <label class="visually-hidden" for="rt">@T["To"]</label><input class="form-control w-auto" id="rt" type="date" name="to" value="@Model.To.ToString("yyyy-MM-dd")">
+  <button class="btn btn-outline-secondary">@T["Show"]</button>
+</form>
+<div class="ca-stats">
+  <div class="ca-stat"><span class="label">@T["Orders"]</span><span class="value">@Model.Orders</span></div>
+  <div class="ca-stat"><span class="label">@T["Kg ground"]</span><span class="value">@Fmt.Qty(Model.Kg)</span></div>
+  <div class="ca-stat"><span class="label">@T["Income"]</span><span class="value">@Fmt.Rs(income.Sum(b => b.Balance))</span></div>
+  <div class="ca-stat"><span class="label">@T["Expenses"]</span><span class="value">@Fmt.Rs(expense.Sum(b => b.Balance))</span></div>
+  <div class="ca-stat"><span class="label">@T["Net profit"]</span><span class="value @(net < 0 ? "text-danger" : "text-success")">@Fmt.Rs(net)</span></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header"><h2 class="card-title">@T["Profit & Loss"]</h2></div>
+    <div class="ca-table-wrap"><table class="table">
+      <tbody>
+        <tr class="table-light"><th colspan="2">@T["Income"]</th></tr>
+        @foreach (var b in income) { <tr><td>@Fmt.Name(b.Account.Name, b.Account.NameHi)</td><td class="num">@Fmt.Rs(b.Balance)</td></tr> }
+        <tr><th>@T["Total income"]</th><th class="num">@Fmt.Rs(income.Sum(b => b.Balance))</th></tr>
+        <tr class="table-light"><th colspan="2">@T["Expenses"]</th></tr>
+        @foreach (var b in expense) { <tr><td>@Fmt.Name(b.Account.Name, b.Account.NameHi)</td><td class="num">@Fmt.Rs(b.Balance)</td></tr> }
+        <tr><th>@T["Total expenses"]</th><th class="num">@Fmt.Rs(expense.Sum(b => b.Balance))</th></tr>
+        <tr><th>@T["Net profit"]</th><th class="num">@Fmt.Rs(net)</th></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header"><h2 class="card-title">@T["Grinding by grain"]</h2></div>
+    @if (Model.ByGrain.Count == 0) { <div class="ca-empty">@T["No grinding in this period."]</div> }
+    else
+    {
+      <div class="ca-table-wrap"><table class="table"><thead><tr><th>@T["Grain"]</th><th class="num">@T["Kg"]</th><th class="num">@T["Amount"]</th></tr></thead>
+        <tbody>@foreach (var g in Model.ByGrain) { <tr><td>@T[g.Grain]</td><td class="num">@Fmt.Qty(g.Kg)</td><td class="num">@Fmt.Rs(g.Amount)</td></tr> }</tbody></table></div>
+    }
+  </div></div>
+</div>

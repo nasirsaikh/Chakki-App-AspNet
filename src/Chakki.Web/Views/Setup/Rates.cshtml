@@ -1,0 +1,23 @@
+@model List<RateCard>
+@{ ViewData["Title"] = T["Rate card"].Value; ViewData["Lead"] = T["Grinding rates per kg. Counter staff may change a rate only inside the min–max band and must give a reason."].Value; var canEdit = User.IsInRole("Owner") || User.IsInRole("Manager"); }
+<div class="row g-3">
+  <div class="col-xl-8"><div class="card"><div class="ca-table-wrap"><table class="table table-hover">
+    <thead><tr><th>@T["Service"]</th><th>@T["Jalan"]</th><th class="num">@T["System rate"]</th><th class="num">@T["Min"]</th><th class="num">@T["Max"]</th><th>@T["Since"]</th><th>@T["Status"]</th></tr></thead>
+    <tbody>@foreach (var r in Model) { <tr><td>@T[r.Grain] → @T[r.Service]@if (r.ServiceHi != null) { <br><small class="text-body-secondary">@r.ServiceHi</small> }</td><td>@(r.Jalan ? T["Yes"] : T["No"])</td><td class="num">@Fmt.Rs(r.SystemRate)</td><td class="num">@Fmt.Rs(r.MinRate)</td><td class="num">@Fmt.Rs(r.MaxRate)</td><td>@Fmt.Date(r.EffectiveFrom)</td><td><span class="ca-pill @(r.IsActive ? "ca-pill-success" : "")">@(r.IsActive ? T["Active"] : T["Off"])</span></td></tr> }</tbody>
+  </table></div></div></div>
+  @if (canEdit)
+  {
+    <div class="col-xl-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["Add or change a rate"]</h2></div><div class="card-body">
+      <form asp-antiforgery="true" method="post" action="/rates/save">
+        <label class="form-label" for="rid">@T["Rate"]</label><select class="form-select mb-2" id="rid" name="id"><option value="0">@T["— New rate —"]</option>@foreach (var r in Model) { <option value="@r.Id">@r.Label</option> }</select>
+        <div class="row g-2 mb-2"><div class="col-6"><label class="form-label" for="rg">@T["Grain"]</label><input class="form-control" id="rg" name="grain" required></div><div class="col-6"><label class="form-label" for="rs">@T["Service"]</label><input class="form-control" id="rs" name="service" required placeholder="Atta"></div></div>
+        <label class="form-label" for="rh">@T["Name in Hindi"]</label><input class="form-control mb-2" id="rh" name="serviceHi" lang="hi" placeholder="गेहूं → आटा">
+        <div class="row g-2 mb-2"><div class="col-4"><label class="form-label" for="rr">@T["Rate"]</label><input class="form-control" id="rr" name="systemRate" type="number" step="0.01" min="0.01" required></div><div class="col-4"><label class="form-label" for="rmin">@T["Min"]</label><input class="form-control" id="rmin" name="minRate" type="number" step="0.01" min="0"></div><div class="col-4"><label class="form-label" for="rmax">@T["Max"]</label><input class="form-control" id="rmax" name="maxRate" type="number" step="0.01" min="0"></div></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="rj" name="jalan" value="true"><label class="form-check-label" for="rj">@T["Jalan (fine / extra pass)"]</label></div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="ro" name="allowOverride" value="true" checked><label class="form-check-label" for="ro">@T["Staff may adjust within min–max"]</label></div>
+        <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="ra" name="isActive" value="true" checked><label class="form-check-label" for="ra">@T["Active"]</label></div>
+        <button class="btn btn-primary w-100">@T["Save rate"]</button>
+      </form>
+    </div></div></div>
+  }
+</div>

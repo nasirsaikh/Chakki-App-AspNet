@@ -1,0 +1,13 @@
+@model List<Chakki.Web.Controllers.AttendanceRow>
+@{ var d = (DateOnly)ViewBag.Date; ViewData["Title"] = T["Attendance"].Value; ViewData["Lead"] = T["Tap a status for each worker. It saves straight away."].Value; }
+<form class="ca-filter" method="get"><label class="visually-hidden" for="ad">@T["Date"]</label><input class="form-control w-auto" id="ad" type="date" name="date" value="@d.ToString("yyyy-MM-dd")" max="@DateTime.Today.ToString("yyyy-MM-dd")" data-ca-autosubmit></form>
+<div class="card">
+  @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-calendar-check"></i>@T["Add employees first."] <a href="/employees">@T["Employees"]</a></div> }
+  else
+  {
+    <div class="ca-table-wrap"><table class="table">
+      <thead><tr><th>@T["Employee"]</th><th>@T["Status"]</th><th>@T["In"]</th><th>@T["Out"]</th></tr></thead>
+      <tbody>@foreach (var r in Model) { ViewData["Date"] = d; <partial name="_AttendanceRow" model="r" view-data="ViewData" /> }</tbody>
+    </table></div>
+  }
+</div>

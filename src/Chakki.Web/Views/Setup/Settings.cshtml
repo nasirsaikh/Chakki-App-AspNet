@@ -1,0 +1,31 @@
+@model Organization
+@{ ViewData["Title"] = T["Settings"].Value; var owner = User.IsInRole("Owner"); var gws = (List<PaymentGateway>)ViewBag.Gateways; }
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-header"><h2 class="card-title">@T["Chakki details"]</h2></div><div class="card-body">
+    <form asp-antiforgery="true" method="post" action="/settings">
+      <fieldset disabled="@(!owner)">
+        <div class="ca-form-grid">
+          <div><label class="form-label" for="sn">@T["Chakki name"]</label><input class="form-control" id="sn" name="name" value="@Model.Name" required></div>
+          <div><label class="form-label" for="sp">@T["Phone"]</label><input class="form-control" id="sp" name="phone" value="@Model.Phone"></div>
+          <div><label class="form-label" for="sa">@T["Address"]</label><input class="form-control" id="sa" name="address" value="@Model.Address"></div>
+          <div><label class="form-label" for="sg">GSTIN</label><input class="form-control" id="sg" name="gstin" value="@Model.Gstin" maxlength="20"></div>
+          <div><label class="form-label" for="sl">@T["Default language"]</label><select class="form-select" id="sl" name="defaultLanguage"><option value="hi" selected="@(Model.DefaultLanguage == "hi")">हिन्दी</option><option value="en" selected="@(Model.DefaultLanguage == "en")">English</option></select></div>
+        </div>
+        @if (owner) { <div class="ca-form-actions"><button class="btn btn-primary">@T["Save"]</button></div> }
+      </fieldset>
+    </form>
+    @if (!owner) { <p class="small text-body-secondary mt-2 mb-0">@T["Only the owner can change settings."]</p> }
+  </div></div></div>
+  <div class="col-lg-5">
+    <div class="card mb-3"><div class="card-header d-flex justify-content-between"><h2 class="card-title">@T["Payments"]</h2>@if (owner) { <a class="small" href="/settings/payments">@T["Manage"]</a> }</div>
+      <ul class="list-group list-group-flush">
+        @if (gws.Count == 0) { <li class="list-group-item text-body-secondary">@T["No UPI or card gateway yet. Cash works without one."]</li> }
+        @foreach (var g in gws) { <li class="list-group-item d-flex justify-content-between"><span>@g.Name <small class="text-body-secondary">@g.Provider</small></span><span class="ca-pill @(g.IsActive ? "ca-pill-success" : "")">@(g.IsActive ? (g.IsDefault ? T["Default"] : T["Active"]) : T["Off"])</span></li> }
+      </ul>
+    </div>
+    <div class="card"><div class="card-body small">
+      <p class="mb-1"><strong>@T["Your data is private to this chakki."]</strong></p>
+      <p class="mb-0 text-body-secondary">@T["Customers, orders, Udhaar, stock, accounts and chat history are visible only to users of"] @Model.Name.</p>
+    </div></div>
+  </div>
+</div>

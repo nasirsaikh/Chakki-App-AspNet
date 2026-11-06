@@ -1,0 +1,9 @@
+@model List<Chakki.Web.Controllers.PlatformRow>
+@{ ViewData["Title"] = T["All chakkis"].Value; ViewData["Lead"] = T["Platform view: organisations only. Their customers, money and records stay private to each chakki."].Value; }
+<div class="card"><div class="ca-table-wrap"><table class="table">
+  <thead><tr><th>@T["Chakki"]</th><th>@T["Created"]</th><th class="num">@T["Users"]</th><th class="num">@T["Orders"]</th><th>@T["Status"]</th><th></th></tr></thead>
+  <tbody>@foreach (var r in Model) {
+    <tr><td>@r.Org.Name <small class="text-body-secondary">@r.Org.Slug</small></td><td>@Fmt.Date(r.Org.CreatedAt)</td><td class="num">@r.Users</td><td class="num">@r.Orders</td>
+      <td><span class="ca-pill @(r.Org.IsActive ? "ca-pill-success" : "ca-pill-danger")">@(r.Org.IsActive ? T["Active"] : T["Suspended"])</span></td>
+      <td><form asp-antiforgery="true" method="post" action="/platform/@r.Org.Id" data-ca-confirm="@T["Are you sure?"]"><input type="hidden" name="active" value="@(!r.Org.IsActive)"><button class="btn btn-sm @(r.Org.IsActive ? "btn-outline-danger" : "btn-outline-success")">@(r.Org.IsActive ? T["Suspend"] : T["Activate"])</button></form></td></tr> }</tbody>
+</table></div></div>

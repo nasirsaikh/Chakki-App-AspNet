@@ -1,0 +1,133 @@
+@using System.Globalization
+@using System.Security.Claims
+@using Chakki.Web.Tenancy
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    var hi = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "hi";
+    var orgName = User.FindFirstValue(TenantClaims.OrganizationName);
+    var fullName = User.FindFirstValue(TenantClaims.FullName) ?? User.Identity?.Name;
+    var token = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+    var path = Context.Request.Path.Value ?? "/";
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+    var title = ViewData["Title"] as string ?? "";
+}
+<!doctype html>
+<html lang="@(hi ? "hi" : "en")" data-bs-theme="light" data-ca-mode="system" data-density="compact" data-ca-header="light" data-ca-sidebar="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#b45309">
+  <meta name="htmx-config" content='{"allowEval": false, "includeIndicatorStyles": false, "historyCacheSize": 0, "selfRequestsOnly": true}'>
+  <title>@(string.IsNullOrEmpty(title) ? "" : title + " · ")@(orgName ?? T["Chakki ERP"])</title>
+  <link rel="icon" href="~/favicon.svg" type="image/svg+xml">
+  <script src="~/js/theme-init.js"></script>
+  <link rel="stylesheet" href="~/css/fonts.css">
+  <link rel="stylesheet" href="~/vendor/adminlte/adminlte.min.css">
+  <link rel="stylesheet" href="~/vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true">
+  <link rel="stylesheet" href="~/css/adminlte-app.css" asp-append-version="true">
+  <link rel="stylesheet" href="~/css/app.css" asp-append-version="true">
+  @await RenderSectionAsync("Head", required: false)
+</head>
+<body class="bg-body-tertiary" hx-headers='{"X-CSRF-TOKEN": "@token"}'>
+<a class="visually-hidden-focusable" href="#main">@T["Skip to content"]</a>
+<div class="ca-shell">
+  <nav class="app-header navbar navbar-expand bg-body sticky-top" aria-label="@T["Top bar"]">
+    <div class="container-fluid">
+      <ul class="navbar-nav align-items-center">
+        <li class="nav-item@(User.Identity?.IsAuthenticated == true ? "" : " d-none")">
+          <button class="nav-link btn btn-link" type="button" data-bs-toggle="offcanvas" data-bs-target="#ca-nav" aria-controls="ca-nav" aria-label="@T["Open menu"]" title="@T["Menu"]"><i class="bi bi-list" aria-hidden="true"></i></button>
+        </li>
+        <li class="nav-item">
+          <a class="ca-header-brand" href="/">
+            <span class="ca-brand-mark" aria-hidden="true"><i class="bi bi-gear-wide-connected"></i></span>
+            <span class="ca-brand-text">@(orgName ?? T["Chakki ERP"])</span>
+          </a>
+        </li>
+      </ul>
+      <ul class="navbar-nav ms-auto align-items-center ca-header-end">
+        @if (User.HasClaim(c => c.Type == TenantClaims.OrganizationId))
+        {
+          <li class="nav-item d-none d-sm-block me-1"><a class="btn btn-primary btn-sm" href="/orders/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["New order"]</a></li>
+          <li class="nav-item"><a class="nav-link" href="/chat" title="@T["Ask the assistant"]" aria-label="@T["Ask the assistant"]"><i class="bi bi-chat-dots" aria-hidden="true"></i></a></li>
+        }
+        <li class="nav-item">
+          <form asp-antiforgery="true" method="post" action="/language" class="d-inline">
+            <input type="hidden" name="__RequestVerificationToken" value="@token">
+            <input type="hidden" name="culture" value="@(hi ? "en-IN" : "hi-IN")">
+            <input type="hidden" name="returnUrl" value="@returnUrl">
+            <button class="nav-link btn btn-link ca-lang" type="submit" title="@(hi ? "Switch to English" : "हिन्दी में देखें")" aria-label="@(hi ? "Switch to English" : "हिन्दी में देखें")">
+              <span class="@(hi ? "" : "fw-bold")">EN</span><span class="opacity-50">/</span><span class="@(hi ? "fw-bold" : "")">हिं</span>
+            </button>
+          </form>
+        </li>
+        <li class="nav-item"><button class="nav-link btn btn-link" type="button" data-ca-theme aria-label="@T["Light or dark"]" title="@T["Light or dark"]"><i class="bi bi-circle-half" data-ca-theme-icon aria-hidden="true"></i></button></li>
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+          <li class="nav-item dropdown user-menu">
+            <a href="#" class="nav-link dropdown-toggle d-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false" aria-label="@T["Account menu"]">
+              <span class="ca-avatar">@(string.IsNullOrEmpty(fullName) ? "?" : fullName[..1])</span>
+              <span class="d-none d-md-inline lh-sm text-start"><span class="d-block fw-semibold">@fullName</span></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end ca-account-menu">
+              <li class="user-header text-bg-primary">
+                <span class="ca-avatar ca-avatar-lg">@(string.IsNullOrEmpty(fullName) ? "?" : fullName[..1])</span>
+                <p>@fullName<small>@User.Identity?.Name</small><small>@string.Join(", ", new[] { "Owner", "Manager", "Operator", "Accountant", "PlatformAdmin" }.Where(User.IsInRole).Select(r => T[r].Value))</small></p>
+              </li>
+              <li><a class="dropdown-item" href="/account/password"><i class="bi bi-key" aria-hidden="true"></i> @T["Change password"]</a></li>
+              <li class="user-footer">
+                <form asp-antiforgery="true" method="post" action="/account/logout"><input type="hidden" name="__RequestVerificationToken" value="@token"><button class="btn btn-outline-secondary btn-sm w-100" type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> @T["Sign out"]</button></form>
+              </li>
+            </ul>
+          </li>
+        }
+      </ul>
+    </div>
+  </nav>
+
+  @if (User.Identity?.IsAuthenticated == true)
+  {
+    <partial name="_Nav" />
+  }
+
+  <main id="main" class="ca-main" tabindex="-1">
+    @if (IsSectionDefined("PageHeader") || !string.IsNullOrEmpty(title))
+    {
+      <div class="app-content-header ca-page-header">
+        <div class="container-fluid">
+          <div class="ca-page-header-row">
+            <div class="ca-page-heading">
+              <h1 class="ca-page-title">@title</h1>
+              @if (ViewData["Lead"] is string lead) { <p class="ca-page-lead">@lead</p> }
+            </div>
+            <div class="ca-page-actions">@await RenderSectionAsync("Actions", required: false)</div>
+          </div>
+        </div>
+      </div>
+    }
+    <div class="app-content">
+      <div class="container-fluid ca-content">
+        <div id="ca-action-feedback" class="alert alert-danger ca-feedback" role="alert"></div>
+        @if (TempData["Success"] is string ok)
+        {
+          <div class="alert alert-success" data-ca-autodismiss role="status"><i class="bi bi-check-circle" aria-hidden="true"></i> <span>@ok</span></div>
+        }
+        @if (TempData["Error"] is string err)
+        {
+          <div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i> <span>@err</span></div>
+        }
+        @RenderBody()
+      </div>
+    </div>
+  </main>
+  <footer class="app-footer">
+    <strong>@(orgName ?? T["Chakki ERP"])</strong> · @T["Flour mill management"]
+  </footer>
+</div>
+<div class="ca-toast-zone" aria-live="polite"></div>
+<script src="~/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="~/vendor/htmx/htmx.min.js"></script>
+@await RenderSectionAsync("Scripts", required: false)
+<script src="~/js/app.js" asp-append-version="true"></script>
+</body>
+</html>

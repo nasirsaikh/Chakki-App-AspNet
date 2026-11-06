@@ -1,0 +1,25 @@
+@model List<ProductionRun>
+@{ ViewData["Title"] = T["Production"].Value; ViewData["Lead"] = T["Raw input against output and by-product. The difference is process loss."].Value; var l = (Chakki.Web.Controllers.StockLists)ViewBag.Lists; }
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card">
+    @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-gear-wide-connected"></i>@T["No production runs yet."]</div> }
+    else
+    {
+      <div class="ca-table-wrap"><table class="table">
+        <thead><tr><th>@T["Date"]</th><th>@T["Input"]</th><th>@T["Output"]</th><th>@T["By-product"]</th><th class="num">@T["Loss"]</th><th class="num">@T["Yield"]</th></tr></thead>
+        <tbody>@foreach (var p in Model) { <tr><td>@Fmt.Date(p.Date)</td><td>@Fmt.Qty(p.InputQty) @Fmt.Name(p.InputItem)</td><td>@Fmt.Qty(p.OutputQty) @Fmt.Name(p.OutputItem)</td><td>@if (p.ByProductItem != null) { <span>@Fmt.Qty(p.ByProductQty) @Fmt.Name(p.ByProductItem)</span> }</td><td class="num">@Fmt.Qty(p.LossQty)</td><td class="num">@p.YieldPercent%</td></tr> }</tbody>
+      </table></div>
+    }
+  </div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["New production run"]</h2></div><div class="card-body">
+    <form asp-antiforgery="true" method="post" action="/production">
+      <label class="form-label" for="pin">@T["Input item"]</label><select class="form-select mb-2" id="pin" name="inputId">@foreach (var i in l.Items) { <option value="@i.Id">@Fmt.Name(i) (@Fmt.Qty(i.Quantity) @i.Unit)</option> }</select>
+      <label class="form-label" for="piq">@T["Input quantity"]</label><input class="form-control mb-2" id="piq" name="inputQty" type="number" step="0.01" min="0.01" required inputmode="decimal">
+      <label class="form-label" for="pout">@T["Output item"]</label><select class="form-select mb-2" id="pout" name="outputId">@foreach (var i in l.Items) { <option value="@i.Id">@Fmt.Name(i)</option> }</select>
+      <label class="form-label" for="poq">@T["Output quantity"]</label><input class="form-control mb-2" id="poq" name="outputQty" type="number" step="0.01" min="0.01" required inputmode="decimal">
+      <label class="form-label" for="pby">@T["By-product (optional)"]</label><select class="form-select mb-2" id="pby" name="byId"><option value="">—</option>@foreach (var i in l.Items) { <option value="@i.Id">@Fmt.Name(i)</option> }</select>
+      <label class="form-label" for="pbq">@T["By-product quantity"]</label><input class="form-control mb-3" id="pbq" name="byQty" type="number" step="0.01" min="0" value="0" inputmode="decimal">
+      <button class="btn btn-primary w-100">@T["Save run"]</button>
+    </form>
+  </div></div></div>
+</div>

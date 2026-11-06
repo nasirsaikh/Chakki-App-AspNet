@@ -1,0 +1,21 @@
+@model List<PayrollRun>
+@{ ViewData["Title"] = T["Payroll"].Value; ViewData["Lead"] = T["Wages from attendance: daily rate × days present, or monthly salary × days worked ÷ days in the period."].Value; var emps = (List<Employee>)ViewBag.Employees; var first = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1); }
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card">
+    @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-cash-stack"></i>@T["No wages paid yet."]</div> }
+    else
+    {
+      <div class="ca-table-wrap"><table class="table">
+        <thead><tr><th>@T["Employee"]</th><th>@T["Period"]</th><th class="num">@T["Days worked"]</th><th class="num">@T["Wages"]</th></tr></thead>
+        <tbody>@foreach (var p in Model) { <tr><td>@p.Employee!.Name</td><td>@Fmt.Date(p.PeriodStart) – @Fmt.Date(p.PeriodEnd)</td><td class="num">@Fmt.Qty(p.DaysWorked)</td><td class="num">@Fmt.Rs(p.Gross)</td></tr> }</tbody>
+      </table></div>
+    }
+  </div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["Pay wages"]</h2></div><div class="card-body">
+    <form asp-antiforgery="true" method="post" action="/payroll" data-ca-confirm="@T["Post wages and pay in cash?"]">
+      <label class="form-label" for="pe">@T["Employee"]</label><select class="form-select mb-2" id="pe" name="employeeId">@foreach (var e in emps) { <option value="@e.Id">@e.Name — @Fmt.Rs(e.WageRate)/@(e.WageType == WageType.Daily ? T["day"] : T["month"])</option> }</select>
+      <div class="row g-2 mb-3"><div class="col-6"><label class="form-label" for="pf">@T["From"]</label><input class="form-control" id="pf" name="from" type="date" value="@first.ToString("yyyy-MM-dd")"></div><div class="col-6"><label class="form-label" for="pt">@T["To"]</label><input class="form-control" id="pt" name="to" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")"></div></div>
+      <button class="btn btn-primary w-100">@T["Calculate and pay"]</button>
+    </form>
+  </div></div></div>
+</div>

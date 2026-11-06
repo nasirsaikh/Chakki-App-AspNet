@@ -1,444 +1,197 @@
-# Chakki ERP Asp.Net Core
+# Chakki ERP (ASP.NET Core + HTMX)
 
-Mobile-first, bilingual **On-Demand Chakki (Flour Mill) Management & Accounting ERP** built with Asp.Net, HTMX, ApexCharts, Multiple LLM API's Integrated with Chat.
+A mobile-first, bilingual (Hindi / English) **flour mill (chakki) management and accounting app** that many chakkis can share safely.
+Each chakki signs up, gets its own private books, and cannot see or touch another chakki's data.
 
-The application is designed for day-to-day use on **phones and tablets** at a village chakki counter while preserving production-grade accounting controls, inventory movements, customer Udhaar, supplier payables, payroll, machine maintenance and dynamic QR/UPI settlement.
+Built with **ASP.NET Core 10 MVC + Razor + HTMX 2**, the **CoreApp-AI theme** (AdminLTE 4 / Bootstrap 5, chat UI), ApexCharts,
+EF Core on SQLite, ASP.NET Identity, and an optional **Claude** chat assistant.
 
-## Stack
-- **Database:** SQLite
-- **Navigation:** off-canvas sidebar pattern; always closed by default on phone, tablet and desktop
-- **Partial page interactions:** HTMX
+## What it does
 
-> This keeps HTMX/Asp.Net Core as the authoritative UI architecture.
+| Area | Screens |
+|---|---|
+| Counter | Dashboard (auto-refresh every 30 s, 7-day chart), new grinding order, order flow Intake → Grinding → Ready → Delivered, billing with forgiveness |
+| Payments | Cash, **dynamic UPI QR** (any UPI app), **card / UPI via Razorpay Checkout**, shareable pay link for WhatsApp, signed webhooks, manual UTR confirmation |
+| Customers | Customers, village filter, live search, history, **Udhaar** (credit) with receipts, **Old Udhaar** (opening balances, settled FIFO) |
+| Rates | Grain × service × Jalan rate card with a min / max band; any change needs a reason; every order line keeps a rate snapshot |
+| Stock | Inventory, purchases (supplier payables), retail sales with COGS, buyback against fees, production / yield, wastage |
+| Books | Double-entry journal, ledger per account, manual entries, reversal (no edits or deletes), reports, P&L, trial balance |
+| People | Employees (daily / monthly wages), attendance, payroll posting, maintenance (Takai, belts, bearings) with repeats |
+| Setup | Chakki settings, payment gateways, users and roles, platform admin (organisations only) |
+| Chat | Ask in Hindi, Hinglish or English: "Geeta ka udhaar kitna hai?", "आज कितनी पिसाई हुई?", "Which customers owe the most?" |
 
-## Mobile / tablet UX
+## Quick start
 
-The main workflow is optimized for touch use:
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
-- Navigation is **never permanently open**. It starts closed on every page and every screen size.
-- The header menu button opens the navigation as a secondary off-canvas sheet.
-- Selecting a module closes the sheet immediately.
-- Backdrop tap and `Escape` close the sheet.
-- Controls use touch-friendly sizing.
-- Tables use horizontal overflow rather than breaking the viewport.
-- Main content remains full width when the sidebar is closed.
-- EN / हिन्दी switching is available in the top bar.
-- Light/dark themes use shadcn semantic theme tokens.
-
-## Modules
-
-1. **Dashboard** — HTMX-polled today's grinding weight, net income, expenses, active cash, outstanding Udhaar and pending jobs; ApexCharts seven-day processing chart.
-2. **Customers** — permanent/temporary customers, contact details, village tags, opening balances, smart search and order history.
-3. **Grinding** — Intake → Grinding → Ready → Dispatched / Delivered workflow.
-4. **Rate Card** — grain/service/Jalan rate matrix with bounded negotiated overrides, rate will be set by the admin, however can be adjusted
-5. **Udhaar** — customer outstanding ledger, receipts and adjustments.
-6. **Old Udhaar** — opening-balance tracking and FIFO settlement history.
-7. **Accounts** — granular cash book and double-entry ledger.
-8. **Inventory** — raw grains, packed atta, oil, Khal/by-products, gunny bags and other stock.
-9. **Purchases** — supplier procurement, inventory receipts and payable postings.
-10. **Sales** — retail checkout with sales income and COGS posting.
-11. **Buyback** — customer by-product/finished-product buyback against processing fees.
-12. **Production** — raw input vs output, by-product, process loss and yield.
-13. **Wastage** — milling loss, dust and process waste logs.
-14. **Utilities** — electricity, fuel, water and other operating costs.
-15. **Employees** — worker profile and employment terms, and also some employees work on daily wages
-16. **Attendance** — daily check-in/check-out and attendance status.
-17. **Payroll** — workday-driven wage calculation and accounting posting.
-18. **Maintenance** — belts, bearings, lubrication, motor work and stone channelling/Takai schedules.
-19. **Suppliers** — vendor directory and payable balances.
-20. **Reports** — operational reports, Profit & Loss and Trial Balance.
-21. **Settings** — owner read-only configuration summary; actual system changes are made only through Admin.
-22. **Users / Roles** — Owner, Manager, Operator and Accountant RBAC.
-
-## Accounting architecture
-
-Seeded system accounts include:
-
-- Cash Book
-- Accounts Receivable (Udhaar)
-- Inventory Asset
-- Accounts Payable (Suppliers)
-- Customer Buyback Payable
-- Opening Balance Equity
-- Grinding Income
-- Retail Sales Income
-- Expense: Customer Goodwill/Forgiven
-- Cost of Goods Sold
-- Utility Expense
-- Wage and Payroll Expense
-- Maintenance Expense
-- General Operating Expense
-
-Posted `JournalEntry` and `LedgerEntry` records are read-only in Asp.Net Core Admin to protect ledger integrity.
-
-### Grinding forgiveness example
-
-For a ₹43 grinding bill, ₹40 paid and ₹3 forgiven:
-
-```text
-Dr Accounts Receivable (Udhaar)          ₹40
-Dr Expense: Customer Goodwill/Forgiven    ₹3
-    Cr Grinding Income                         ₹43
-
-Dr Cash                                   ₹40
-    Cr Accounts Receivable (Udhaar)            ₹40
+```bash
+cd src/Chakki.Web
+# Demo data: two chakkis side by side so you can see that they are isolated.
+export Seed__DemoPassword='choose-a-password'
+ASPNETCORE_ENVIRONMENT=Development dotnet run
 ```
 
-Outstanding Udhaar = **₹0**. The forgiven ₹3 never enters the customer's receivable balance.
+Open http://localhost:5050. Demo logins, all with the password you set:
 
-If total fee is ₹48, ₹40 is paid and ₹3 is forgiven, only ₹5 remains in Udhaar.
+| Email | Chakki | Role |
+|---|---|---|
+| owner@shriram.demo | Shri Ram Atta Chakki (Hindi) | Owner |
+| operator@shriram.demo | Shri Ram Atta Chakki | Operator |
+| owner@ganga.demo | Ganga Flour Mill (English) | Owner |
 
-## Grinding rates and Jalan
+Or click **Register your chakki** on the login page to create a new organisation. The database and keys are created in
+`src/Chakki.Web/App_Data/` on first run (migrations are applied automatically).
 
-`RateCard` stores:
+Windows (PowerShell): `$env:Seed__DemoPassword='choose-a-password'; $env:ASPNETCORE_ENVIRONMENT='Development'; dotnet run`
 
-- grain type
-- output/service
-- Jalan / non-Jalan mode
-- system rate per kg
-- whether an override is allowed
-- minimum permitted override
-- maximum permitted override
-- effective date
+### Tests
 
-Each `GrindingOrderLine` snapshots both the **system rate** and the **applied rate**.
-
-Example seed configuration:
-
-| Service | Jalan | System rate | Minimum |
-|---|---:|---:|---:|
-| Wheat → Atta | No | ₹2.40/kg | ₹2.00/kg |
-| Wheat → Atta | Yes | ₹3.00/kg | ₹2.50/kg |
-| Chana → Besan | No | ₹3.00/kg | ₹2.50/kg |
-| Multigrain | No | ₹3.50/kg | ₹3.00/kg |
-| Mustard oil extraction | No | ₹5.00/kg | ₹4.00/kg |
-
-Changing ₹2.40 to ₹2.00 requires a reason and must stay inside the configured minimum/maximum range.
-
-## Buyback calculation
-
-Example:
-
-- Mustard processed: **15 kg**
-- Processing/extraction rate: **₹5/kg**
-- Processing fee: **₹75**
-- Customer sells Khal to Chakki: **10 kg**
-- Buyback rate: **₹20/kg**
-- Buyback value: **₹200**
-- Net amount returned to customer: **₹200 − ₹75 = ₹125**
-
-The buyback posting also increases the selected inventory item by the bought-back quantity. System rate and applied rate are stored separately, and a reason is mandatory when the applied rate is changed.
-
-# UPI / Dynamic QR configuration — Asp.Net Core Admin only
-
-No UPI VPA, merchant credential or webhook signing secret is configured through the normal ERP screens or `.env` file.
-
-After creating a superuser:
-
-1. Open `/admin/`.
-2. Open **Configuration → Payment / UPI gateways**.
-3. Edit the seeded disabled `UPI / Bank QR` record or create a new record.
-4. Select the provider: UPI/Bank QR, Razorpay, BharatPe or Custom Bank/UPI Provider.
-5. Enter the **UPI VPA**.
-6. Enter merchant name / merchant ID / API key ID as applicable.
-7. Enter the API secret if your provider requires it.
-8. Enter a long random **Webhook signing secret**.
-9. Set the provider's webhook signature header, e.g. `X-Chakki-Signature` or `X-Razorpay-Signature`.
-10. Enable **Active**.
-11. Enable **Default gateway** for the preferred provider.
-12. Save.
-
-API and webhook secrets are encrypted before storage using an application encryption key derived from `Asp.Net Core_SECRET_KEY`. If `Asp.Net Core_SECRET_KEY` is intentionally changed, re-enter gateway secrets in Admin after the rotation.
-
-The user-facing Settings page only displays configuration state; staff users get direct links to the relevant Asp.Net Core Admin screens.
-
-## QR payment flow
-
-When an operator creates a QR payment:
-
-1. The amount cannot exceed invoice outstanding.
-2. Operator selects an active Admin-configured gateway.
-3. `OrderPayment` stores the gateway relationship and provider snapshot.
-4. A unique `payment_reference` is created.
-5. The UPI URI contains the configured VPA, merchant name, amount and unique reference.
-6. QR is rendered for the customer.
-7. The payment screen HTMX-polls the payment status every three seconds.
-8. The bank/provider calls the webhook.
-9. The webhook resolves the gateway **from the payment record** and verifies that gateway's signing secret/header.
-10. Settlement is executed atomically and idempotently.
-
-### Webhook endpoint
-
-```text
-POST /api/v1/payments/qr-webhook/
+```bash
+dotnet test
 ```
 
-Example payload:
+37 tests cover tenant isolation (filters, stamped writes, cross-tenant writes and foreign keys rejected), balanced journals,
+forgiveness kept out of Udhaar, rate bands, FIFO Udhaar receipts, webhook signature / amount / replay, and chat language detection.
+
+## Configuration
+
+Nothing secret is in source control. Use environment variables, `dotnet user-secrets`, or a git-ignored `appsettings.Local.json`.
+
+| Setting (env var form) | Purpose |
+|---|---|
+| `ConnectionStrings__Default` | SQLite connection string (default `App_Data/chakki.db`) |
+| `DataProtection__KeysPath` | Where encryption keys live (default `App_Data/keys`). Back this up: gateway secrets are encrypted with it |
+| `Seed__Demo`, `Seed__DemoPassword` | Create the demo chakkis (on in Development; needs the password) |
+| `Seed__DemoWebhookSecret` | Optional webhook secret for the demo UPI gateway, to try signed webhooks locally |
+| `Seed__PlatformAdminEmail`, `Seed__PlatformAdminPassword` | Creates the platform admin who can list, suspend and re-activate chakkis |
+| `Ai__Provider` | `local` (default, offline rules) or `claude` |
+| `ANTHROPIC_API_KEY` (or `Ai__AnthropicApiKey`) | Enables Claude for the chat when the provider is `claude` |
+| `Ai__Model`, `Ai__Effort` | Default `claude-opus-5-5`, `low` |
+| `Payments__AllowSimulation` | Show the "simulate payment" button outside Development (keep off in production) |
+
+## Multi-tenancy: how chakkis are kept apart
+
+Shared database, shared schema, one `OrganizationId` on every business row (`TenantEntity`). Three layers enforce it in `AppDbContext`:
+
+1. **Read filter.** A global EF Core query filter on every tenant table limits every query to the signed-in user's chakki.
+   With no chakki (e.g. the platform admin), tenant tables return nothing.
+2. **Write guard.** `SaveChanges` stamps new rows with the current chakki and throws `CrossTenantWriteException` if a row
+   belongs to another chakki or its `OrganizationId` is changed.
+3. **Foreign-key guard.** Every reference to another tenant row (customer, item, order, gateway…) is checked to belong to the
+   same chakki before saving, so a forged `customerId` from another chakki is refused.
+
+The chakki comes only from the signed auth cookie (`chakki:org` claim), never from the URL or a form. Unique indexes
+(order numbers, account codes, payment references) are per chakki. The security stamp is re-checked every minute, so a
+suspended chakki or a disabled user is signed out quickly. The platform admin sees organisation names and counts only.
+
+Public endpoints (pay link, webhooks) find the payment by its unguessable reference first and switch to that chakki only for
+that request, after the webhook signature is verified.
+
+## Payments
+
+Set up gateways at **Settings → Payments** (owner only). Secrets are write-only and stored encrypted (ASP.NET Data Protection).
+
+* **UPI QR**: enter your UPI ID (VPA). The bill screen shows a dynamic QR (`upi://pay?...&am=…&tr=<reference>`) that any UPI app
+  can pay, plus a link `/pay/<reference>` to send on WhatsApp. The screen polls every 3 s and turns green when paid.
+  Confirmation comes from your bank / aggregator webhook, or the owner can confirm manually with the UTR.
+* **Card / UPI app (Razorpay)**: enter Key ID, Key Secret and a webhook secret. The customer pays in Razorpay Checkout; the
+  signature is verified on the server, and the Razorpay webhook (`payment.captured`, `order.paid`) is a backup.
+
+### Webhooks
+
+```
+POST /api/v1/payments/qr-webhook          header: X-Chakki-Signature (configurable)
+POST /api/v1/payments/razorpay-webhook    header: X-Razorpay-Signature
+```
+
+Generic body:
 
 ```json
-{
-  "payment_reference": "QR-ABC123...",
-  "status": "SUCCESS",
-  "amount": "40.00",
-  "provider_payment_id": "provider-transaction-id"
-}
+{ "payment_reference": "QR-…", "status": "SUCCESS", "amount": "55.00", "provider_payment_id": "UTR123" }
 ```
 
-Default signing method is HMAC-SHA256 over the **exact raw HTTP request body**. The signature header is configured independently for each gateway in Asp.Net Core Admin.
+Signature = hex HMAC-SHA256 of the exact raw body with the gateway's webhook secret (`sha256=` prefix accepted).
+Wrong signature → 401, amount mismatch → 422, non-success status → 202 ignored, replay → 200 "already settled" (posted once).
 
-Example Python signature generation:
-
-```python
-import hashlib
-import hmac
-import json
-
-body = json.dumps(
-    {
-        "payment_reference": "QR-ABC123",
-        "status": "SUCCESS",
-        "amount": "40.00",
-    },
-    separators=(",", ":"),
-).encode()
-
-signature = hmac.new(
-    b"the-webhook-secret-entered-in-Asp.Net Core-admin",
-    body,
-    hashlib.sha256,
-).hexdigest()
+```bash
+BODY='{"payment_reference":"QR-…","status":"SUCCESS","amount":"55.00","provider_payment_id":"UTR1"}'
+SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
+curl -H "Content-Type: application/json" -H "X-Chakki-Signature: $SIG" --data-binary "$BODY" http://localhost:5050/api/v1/payments/qr-webhook
 ```
 
-The settlement transaction:
+## Accounting
+
+Seeded accounts per chakki: Cash, Bank / UPI, Udhaar (receivable), Inventory, Supplier payable, Buyback payable, Opening
+equity, Grinding income, Sales income, Goodwill / forgiven, COGS, Utilities, Wages, Maintenance, General expense.
+Every journal must balance; posted entries are never edited, only reversed.
+
+For a ₹43 bill with ₹3 forgiven and ₹40 paid:
 
 ```text
-Dr Cash
-    Cr Accounts Receivable (Udhaar)
+Dr Udhaar (receivable)        ₹40
+Dr Goodwill / forgiven         ₹3
+    Cr Grinding income             ₹43
+
+Dr Cash                       ₹40
+    Cr Udhaar (receivable)         ₹40
 ```
 
-It then:
+Udhaar left: ₹0. Forgiveness never enters the customer's balance. Udhaar receipts settle Old Udhaar first, then the oldest bills.
 
-- marks `OrderPayment.settlement_status = SETTLED`
-- automatically stamps `settled_at`
-- updates invoice paid/outstanding values
-- marks the order payment status paid/partial
-- closes a fully paid order as Delivered
-- returns an `HX-Trigger` event for `paymentSettled`
+Default rates (each chakki can change its own): Wheat → Atta ₹2.40 (₹2.00–3.00), Jalan ₹3.00, Chana → Besan ₹3.00,
+Multigrain ₹3.50, Mustard oil extraction ₹5.00, Bajra and Makka ₹2.50 per kg.
 
-The provider's HTTP webhook response cannot directly mutate a customer's already-open browser page. Therefore the QR page combines the webhook with HTMX polling; once the database transaction settles, the open screen switches to **Paid & Cleared** automatically.
+Buyback: 15 kg mustard at ₹5 = ₹75 fee; customer sells 10 kg Khal at ₹20 = ₹200; ₹75 is adjusted against the fee and ₹125 is paid out.
 
-## RBAC
+## Roles
 
-Application groups:
+| Role | Can do |
+|---|---|
+| Owner | Everything in their chakki, including users, settings and payment gateways |
+| Manager | Daily work, money, people, rates; larger forgiveness; manual payment confirmation |
+| Operator | Counter: orders, billing, cash and QR, attendance, production, maintenance |
+| Accountant | Books, reports, purchases, payroll, utilities |
+| Platform admin | List and suspend chakkis. No access to any chakki's records |
 
-- **Owner** — full application configuration and financial access.
-- **Manager** — operational management and selected accounting.
-- **Operator** — grinding, attendance, production and day-to-day floor workflows.
-- **Accountant** — receivables, payables, sales/purchases, payroll and reporting.
+## Hindi and English
 
-Asp.Net Core superusers bypass module restrictions. System configuration and payment credentials require Asp.Net Core Admin access (`is_staff`).
+Hindi is the default. The EN / हिं toggle in the top bar switches the whole UI and is remembered per user. Translations are
+in `src/Chakki.Web/Resources/i18n/hi.json` (the English text is the key). Rates, items and accounts carry Hindi names.
 
-## English / Hindi
+## Chat assistant
 
-Asp.Net Core `LocaleMiddleware` is enabled.
+Same idea as CoreApp-AI: the assistant can only **read** this chakki's data through a fixed set of tools (summary, customer
+Udhaar, top debtors, pending orders, stock, expenses, maintenance). It never changes records.
 
-- English: `en`
-- Hindi: `hi`
-- Header switch: **EN / हिं**
-- Source translations: `locale/hi/LC_MESSAGES/Asp.Net Core.po`
-- Compiled translation: `locale/hi/LC_MESSAGES/Asp.Net Core.mo`
+* Default: offline rules, no API key needed, understands Hindi, Hinglish and English.
+* With `Ai__Provider=claude` and `ANTHROPIC_API_KEY`: Claude answers using the same tools, in the language of the question,
+  and falls back to the offline rules if the API is unreachable.
 
-## Quick start — Windows
+## Security
 
-```powershell
-git clone https://github.com/nasirsaikh/ChakkiApp.git
-cd ChakkiApp
+* Strict Content Security Policy (no inline scripts), HSTS outside Development, `X-Frame-Options: DENY`, no-sniff, referrer policy.
+* Anti-forgery tokens on every form and HTMX request; rate limits on login, chat and webhooks; account lockout.
+* Gateway secrets encrypted at rest and never shown again.
+* Webhook secret is found from the payment record, never from the request.
 
-py -3.13 -m venv .venv
-.venv\Scripts\activate
+## Production notes
 
-pip install -r requirements.txt
-npm install
-npm run build:css
+* Run behind HTTPS (forwarded headers are honoured). Keep `App_Data` (database and keys) on a persistent, backed-up volume.
+* For many chakkis, switch to PostgreSQL: add `Npgsql.EntityFrameworkCore.PostgreSQL`, change `UseSqlite`, and regenerate
+  migrations. The tenancy guards do not depend on the database.
+* Set `Seed__Demo=false` (the default outside Development).
 
-copy .env.example .env
-python manage.py migrate
-python manage.py seed_chakki
-python manage.py createsuperuser
-python manage.py runserver
+## Project layout
+
 ```
-
-Open:
-
-```text
-http://127.0.0.1:8000/
-http://127.0.0.1:8000/admin/
+src/Chakki.Web
+  Controllers/     MVC + HTMX endpoints, webhooks
+  Data/            AppDbContext (tenant guards), migrations
+  Domain/          Entities, roles, system accounts
+  Services/        Ledger, orders, payments, operations, onboarding, chat
+  Tenancy/         Tenant context from the auth cookie
+  Localization/    JSON localizer
+  Views/           Razor views (CoreApp-AI theme)
+  wwwroot/         CSS, JS, vendor (Bootstrap, AdminLTE, HTMX, ApexCharts)
+tests/Chakki.Tests xUnit tests
 ```
-
-After first login, configure **Payment / UPI gateways** in Asp.Net Core Admin before attempting QR payments.
-
-## Quick start — Linux / macOS
-
-```bash
-git clone https://github.com/nasirsaikh/ChakkiApp.git
-cd ChakkiApp
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-npm install
-npm run build:css
-cp .env.example .env
-python manage.py migrate
-python manage.py seed_chakki
-python manage.py createsuperuser
-python manage.py runserver
-```
-
-## Environment variables
-
-Payment-provider configuration is deliberately **not** present here.
-
-```text
-Asp.Net Core_DEBUG=0
-Asp.Net Core_SECRET_KEY=<long-random-secret>
-Asp.Net Core_ALLOWED_HOSTS=chakki.example.com
-CSRF_TRUSTED_ORIGINS=https://chakki.example.com
-DATABASE_URL=postgresql://user:password@host:5432/chakki
-DB_SSLMODE=require
-SECURE_SSL_REDIRECT=1
-```
-
-`Asp.Net Core_SECRET_KEY` must remain stable because it also protects encrypted payment credentials stored in the database.
-
-## Production deployment
-
-```bash
-python manage.py migrate
-python manage.py seed_chakki
-python manage.py collectstatic --noinput
-python manage.py check --deploy
-gunicorn chakki_erp.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 60
-```
-
-Use PostgreSQL for multi-user production. Terminate TLS at Nginx, Caddy, your cloud load balancer or platform ingress. Maintain automatic database backups and periodically test restores.
-
-## Docker
-
-```bash
-docker compose up --build
-```
-
-Then initialize:
-
-```bash
-docker compose exec web python manage.py migrate
-docker compose exec web python manage.py seed_chakki
-docker compose exec web python manage.py createsuperuser
-```
-
-UPI/provider configuration is still performed in Asp.Net Core Admin after startup.
-
-## Tests and checks
-
-```bash
-python manage.py check
-python manage.py makemigrations --check --dry-run
-python manage.py test
-npm run build:css
-```
-
-Tests cover:
-
-- balanced double-entry journals
-- forgiveness exclusion from Udhaar
-- payment webhook signature verification using Admin-configured gateway secrets
-- payment amount mismatch rejection
-- atomic QR settlement
-- invoice/order/payment status updates
-- `HX-Trigger` settlement response
-
-GitHub Actions runs the application checks on supported Python versions and builds Tailwind assets.
-
-## Initial migrations
-
-The source tree contains migration packages. A bootstrap GitHub Actions workflow generates and commits initial numbered migrations on `main` if no numbered migration exists yet. Once those files exist, standard migration discipline applies.
-
-For normal feature development:
-
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
-
-Commit migration files together with the model change that produced them.
-
-## Project structure
-
-```text
-chakki_erp/
-  settings.py
-  urls.py
-  asgi.py
-  wsgi.py
-
-apps/
-  core/             Dashboard, navigation, RBAC, audit model, seed command
-  customers/        Customer master/search/history
-  accounting/       Accounts, journals, ledger, Udhaar, reports
-  operations/       Grinding, rates, invoices, payments, buyback, production, wastage, utilities
-  inventory/        Stock, movements, suppliers, purchases, sales
-  workforce/        Employees, attendance, payroll, maintenance
-  configuration/    Chakki settings + encrypted Admin-only payment gateway configuration
-
-templates/           Asp.Net Core + HTMX + Alpine templates
-static_src/          Tailwind/shadcn semantic token source
-static/              Built static assets
-locale/              English/Hindi localization resources
-.github/workflows/   CI and initial migration bootstrap
-```
-
-## Security / operational controls
-
-- Never manually edit posted ledger rows. Use compensating/reversal entries for corrections.
-- `JournalEntry` and `LedgerEntry` are read-only in Admin.
-- Payment webhook secret is provider-specific, encrypted at rest and never displayed back in Admin.
-- A webhook is rejected if its payment reference is unknown, gateway is disabled, signature is invalid, status is not settled/success/paid, or amount does not exactly match the pending payment.
-- Webhook settlement uses database row locks and is idempotent.
-- Do not give ordinary Operators Asp.Net Core Admin access.
-- Rate overrides are bounded and require a reason.
-- Buyback rate overrides require a reason.
-- Opening balances are accounting events and should be loaded only once at go-live.
-- PostgreSQL is recommended for production concurrency.
-- Use HTTPS in production and run `python manage.py check --deploy` before go-live.
-
-## Repository
-
-`https://github.com/nasirsaikh/ChakkiApp`
-
-## CSS / Tailwind troubleshooting
-
-The repository ships with a development-safe `static/css/app.css`, so Asp.Net Core pages are no longer completely unstyled before the frontend build runs.
-
-For local development:
-
-```bash
-python manage.py runserver
-```
-
-When `Asp.Net Core_DEBUG=1`, the base template also enables Tailwind CSS v4's browser compiler as a development fallback. This makes all utility classes available immediately while editing templates.
-
-For the production stylesheet, always build the static CSS once after cloning or after changing Tailwind classes:
-
-```bash
-npm install
-npm run build:css
-python manage.py collectstatic --noinput
-```
-
-The compiled file must exist at:
-
-```text
-static/css/app.css
-```
-
-Static URLs are absolute (`/static/`), so the stylesheet resolves correctly from nested routes such as `/customers/`, `/grinding/`, and `/accounts/`.

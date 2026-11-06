@@ -1,0 +1,73 @@
+@model Chakki.Web.Controllers.DashboardModel
+@{
+    ViewData["Title"] = T["Dashboard"].Value;
+    ViewData["Lead"] = T["Today at your chakki. Figures refresh every 30 seconds."].Value;
+    var chart = System.Text.Json.JsonSerializer.Serialize(new
+    {
+        type = "bar",
+        categories = Model.Days,
+        series = new object[] { new { name = T["Kg ground"].Value, data = Model.Kg }, new { name = T["Grinding ₹"].Value, data = Model.Income } },
+    });
+}
+@section Actions {
+  <a class="btn btn-primary" href="/orders/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["New order"]</a>
+  <a class="btn btn-outline-secondary" href="/chat"><i class="bi bi-chat-dots" aria-hidden="true"></i> @T["Ask"]</a>
+}
+@section Scripts { <script src="~/vendor/apexcharts/apexcharts.min.js"></script> }
+<partial name="_Stats" model="Model.Stats" />
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header"><h2 class="card-title">@T["Last 7 days"]</h2></div>
+      <div class="card-body">
+        <script type="application/json" id="chart-week">@Html.Raw(chart)</script>
+        <div class="ca-chart" data-ca-chart="chart-week" role="img" aria-label="@T["Kg ground and grinding income for the last 7 days"]"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center"><h2 class="card-title">@T["Pending jobs"]</h2><a href="/orders?status=open" class="small">@T["All orders"]</a></div>
+      @if (Model.Pending.Count == 0)
+      {
+        <div class="ca-empty"><i class="bi bi-check2-circle"></i>@T["No pending jobs."]</div>
+      }
+      else
+      {
+        <div class="list-group list-group-flush">
+          @foreach (var o in Model.Pending)
+          {
+            <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2" href="/orders/@o.Id">
+              <span class="text-truncate"><span class="ca-ref">@o.Ref</span> · @o.Customer!.Name <small class="text-body-secondary">@Fmt.Qty(o.Lines.Sum(l => l.WeightKg)) kg</small></span>
+              <partial name="_OrderStatus" model="o.Status" />
+            </a>
+          }
+        </div>
+      }
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between"><h2 class="card-title">@T["Low stock"]</h2><a href="/inventory" class="small">@T["Inventory"]</a></div>
+      @if (Model.LowStock.Count == 0) { <div class="ca-empty"><i class="bi bi-box-seam"></i>@T["All items are above their reorder level."]</div> }
+      else
+      {
+        <ul class="list-group list-group-flush">
+          @foreach (var i in Model.LowStock) { <li class="list-group-item d-flex justify-content-between"><span>@(T.Hi() && i.NameHi != null ? i.NameHi : i.Name)</span><span class="ca-pill ca-pill-warning">@Fmt.Qty(i.Quantity) @i.Unit</span></li> }
+        </ul>
+      }
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between"><h2 class="card-title">@T["Maintenance due"]</h2><a href="/maintenance" class="small">@T["Maintenance"]</a></div>
+      @if (Model.Maintenance.Count == 0) { <div class="ca-empty"><i class="bi bi-tools"></i>@T["Nothing due this week."]</div> }
+      else
+      {
+        <ul class="list-group list-group-flush">
+          @foreach (var m in Model.Maintenance) { <li class="list-group-item d-flex justify-content-between"><span>@m.Title</span><span class="ca-pill @(m.DueOn < DateOnly.FromDateTime(DateTime.Today) ? "ca-pill-danger" : "ca-pill-info")">@Fmt.Date(m.DueOn)</span></li> }
+        </ul>
+      }
+    </div>
+  </div>
+</div>

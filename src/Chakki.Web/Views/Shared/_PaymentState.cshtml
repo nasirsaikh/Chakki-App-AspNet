@@ -1,0 +1,11 @@
+@model PaymentState
+@{
+    var (css, label) = Model switch
+    {
+        PaymentState.Unbilled => ("", "Not billed"),
+        PaymentState.Unpaid => ("ca-pill-danger", "Unpaid"),
+        PaymentState.Partial => ("ca-pill-warning", "Part paid"),
+        _ => ("ca-pill-success", "Paid"),
+    };
+}
+<span class="ca-pill @css">@T[label]</span>

@@ -1,0 +1,306 @@
+/* CoreApp-AI theme layer for AdminLTE 4 (Bootstrap 5.3).
+ *
+ * A theme is a handful of design tokens set on <html> by the server (apps/accounts/theme.py → css_variables) or live
+ * by the theme generator (static/js/theme.js). Everything here derives from them:
+ *   --ca-primary / -success / -warning / -danger / -info (+ -rgb)   colours
+ *   --ca-body-bg, --ca-sidebar-bg                                    page and sidebar surfaces
+ *   --ca-radius, --ca-font, --ca-font-size                           shape and type
+ * html[data-density], html[data-ca-header] and html[data-ca-sidebar] pick layout variants.
+ *
+ * Sections: 1 tokens · 2 Bootstrap 6 aliases (legacy component CSS) · 3 base type · 4 components · 5 density
+ */
+
+/* 1. Tokens ---------------------------------------------------------------------------------------------- */
+:root {
+  --ca-primary: #0d6efd; --ca-primary-rgb: 13, 110, 253; --ca-primary-contrast: #fff;
+  --ca-success: #198754; --ca-success-rgb: 25, 135, 84;
+  --ca-warning: #ffc107; --ca-warning-rgb: 255, 193, 7;
+  --ca-danger: #dc3545; --ca-danger-rgb: 220, 53, 69;
+  --ca-info: #0dcaf0; --ca-info-rgb: 13, 202, 240;
+  --ca-body-bg: #f4f6f9; --ca-sidebar-bg: #343a40;
+  --ca-radius: 6px; --ca-font-size: 13px;
+  --ca-font: "Source Sans 3 Variable", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ca-accent: var(--ca-primary);
+}
+:root, [data-bs-theme="light"] {
+  color-scheme: light;
+  --bs-primary: var(--ca-primary); --bs-primary-rgb: var(--ca-primary-rgb);
+  --bs-primary-text-emphasis: color-mix(in srgb, var(--ca-primary) 62%, #000); --bs-primary-bg-subtle: color-mix(in srgb, var(--ca-primary) 13%, #fff); --bs-primary-border-subtle: color-mix(in srgb, var(--ca-primary) 38%, #fff);
+  --bs-success: var(--ca-success); --bs-success-rgb: var(--ca-success-rgb);
+  --bs-success-text-emphasis: color-mix(in srgb, var(--ca-success) 62%, #000); --bs-success-bg-subtle: color-mix(in srgb, var(--ca-success) 13%, #fff); --bs-success-border-subtle: color-mix(in srgb, var(--ca-success) 38%, #fff);
+  --bs-warning: var(--ca-warning); --bs-warning-rgb: var(--ca-warning-rgb);
+  --bs-warning-text-emphasis: color-mix(in srgb, var(--ca-warning) 62%, #000); --bs-warning-bg-subtle: color-mix(in srgb, var(--ca-warning) 13%, #fff); --bs-warning-border-subtle: color-mix(in srgb, var(--ca-warning) 38%, #fff);
+  --bs-danger: var(--ca-danger); --bs-danger-rgb: var(--ca-danger-rgb);
+  --bs-danger-text-emphasis: color-mix(in srgb, var(--ca-danger) 62%, #000); --bs-danger-bg-subtle: color-mix(in srgb, var(--ca-danger) 13%, #fff); --bs-danger-border-subtle: color-mix(in srgb, var(--ca-danger) 38%, #fff);
+  --bs-info: var(--ca-info); --bs-info-rgb: var(--ca-info-rgb);
+  --bs-info-text-emphasis: color-mix(in srgb, var(--ca-info) 62%, #000); --bs-info-bg-subtle: color-mix(in srgb, var(--ca-info) 13%, #fff); --bs-info-border-subtle: color-mix(in srgb, var(--ca-info) 38%, #fff);
+  --bs-link-color: color-mix(in srgb, var(--ca-primary) 88%, #000); --bs-link-color-rgb: var(--ca-primary-rgb);
+  --bs-link-hover-color: color-mix(in srgb, var(--ca-primary) 70%, #000); --bs-link-decoration: none;
+  --bs-focus-ring-color: rgba(var(--ca-primary-rgb), .25);
+  --ca-page-bg: var(--ca-body-bg);
+  --ca-surface: var(--bs-body-bg); --ca-surface-2: var(--bs-tertiary-bg); --ca-hover: rgba(0, 0, 0, .04);
+  --ca-muted: var(--bs-secondary-color);
+  --ca-shadow: 0 0 1px rgba(0, 0, 0, .125), 0 1px 3px rgba(0, 0, 0, .2);
+  --ca-shadow-pop: 0 .5rem 1.5rem rgba(0, 0, 0, .15);
+}
+[data-bs-theme="dark"] {
+  --bs-primary-text-emphasis: color-mix(in srgb, var(--ca-primary) 62%, #fff); --bs-primary-bg-subtle: color-mix(in srgb, var(--ca-primary) 18%, #16191d); --bs-primary-border-subtle: color-mix(in srgb, var(--ca-primary) 45%, #16191d);
+  --bs-success-text-emphasis: color-mix(in srgb, var(--ca-success) 62%, #fff); --bs-success-bg-subtle: color-mix(in srgb, var(--ca-success) 18%, #16191d); --bs-success-border-subtle: color-mix(in srgb, var(--ca-success) 45%, #16191d);
+  --bs-warning-text-emphasis: color-mix(in srgb, var(--ca-warning) 62%, #fff); --bs-warning-bg-subtle: color-mix(in srgb, var(--ca-warning) 18%, #16191d); --bs-warning-border-subtle: color-mix(in srgb, var(--ca-warning) 45%, #16191d);
+  --bs-danger-text-emphasis: color-mix(in srgb, var(--ca-danger) 62%, #fff); --bs-danger-bg-subtle: color-mix(in srgb, var(--ca-danger) 18%, #16191d); --bs-danger-border-subtle: color-mix(in srgb, var(--ca-danger) 45%, #16191d);
+  --bs-info-text-emphasis: color-mix(in srgb, var(--ca-info) 62%, #fff); --bs-info-bg-subtle: color-mix(in srgb, var(--ca-info) 18%, #16191d); --bs-info-border-subtle: color-mix(in srgb, var(--ca-info) 45%, #16191d);
+  --bs-link-color: color-mix(in srgb, var(--ca-primary) 60%, #fff); --bs-link-hover-color: color-mix(in srgb, var(--ca-primary) 40%, #fff);
+  --bs-focus-ring-color: rgba(var(--ca-primary-rgb), .4);
+  --ca-page-bg: #16191d;
+  --ca-surface: var(--bs-body-bg); --ca-surface-2: var(--bs-tertiary-bg); --ca-muted: var(--bs-secondary-color);
+  --ca-hover: rgba(255, 255, 255, .05);
+  --ca-shadow: 0 0 1px rgba(0, 0, 0, .4), 0 1px 3px rgba(0, 0, 0, .5);
+  --ca-shadow-pop: 0 .5rem 1.5rem rgba(0, 0, 0, .55);
+}
+:root {
+  --bs-body-font-family: var(--ca-font); --bs-body-font-size: 1rem; --bs-body-line-height: 1.5;
+  --bs-border-radius: var(--ca-radius); --bs-border-radius-sm: calc(var(--ca-radius) * .75);
+  --bs-border-radius-lg: calc(var(--ca-radius) * 1.35); --bs-border-radius-xl: calc(var(--ca-radius) * 1.7);
+  --bs-border-radius-xxl: calc(var(--ca-radius) * 2.6);
+  --ca-radius-lg: var(--bs-border-radius-lg);
+}
+
+/* 2. Bootstrap 6 names still used by the page stylesheets ------------------------------------------------- */
+:root, [data-bs-theme] {
+  --bs-fg-body: var(--bs-body-color); --bs-bg-body: var(--bs-body-bg); --bs-font-mono: var(--bs-font-monospace);
+  --bs-primary-base: var(--bs-primary); --bs-primary-bg: var(--bs-primary); --bs-primary-fg: var(--bs-link-color);
+  --bs-primary-fg-emphasis: var(--bs-primary-text-emphasis); --bs-primary-border: var(--bs-primary-border-subtle);
+  --bs-primary-bg-muted: color-mix(in srgb, var(--bs-primary-bg-subtle) 75%, var(--bs-primary));
+  --bs-primary-focus-ring: rgba(var(--ca-primary-rgb), .3); --bs-primary-contrast: var(--ca-primary-contrast);
+  --bs-primary-fg-contrast: var(--ca-primary-contrast);
+  --bs-success-base: var(--bs-success); --bs-success-fg: var(--bs-success-text-emphasis); --bs-success-fg-emphasis: var(--bs-success-text-emphasis);
+  --bs-success-border: var(--bs-success-border-subtle); --bs-success-contrast: #fff;
+  --bs-warning-base: var(--bs-warning); --bs-warning-fg: var(--bs-warning-text-emphasis); --bs-warning-fg-emphasis: var(--bs-warning-text-emphasis);
+  --bs-warning-border: var(--bs-warning-border-subtle);
+  --bs-danger-base: var(--bs-danger); --bs-danger-fg: var(--bs-danger-text-emphasis); --bs-danger-fg-emphasis: var(--bs-danger-text-emphasis);
+  --bs-danger-border: var(--bs-danger-border-subtle); --bs-danger-contrast: #fff;
+  --bs-info-base: var(--bs-info); --bs-info-fg: var(--bs-info-text-emphasis); --bs-info-fg-emphasis: var(--bs-info-text-emphasis);
+  --bs-info-border: var(--bs-info-border-subtle);
+  --bs-secondary-base: var(--bs-secondary);
+  --bs-menu-item-color: var(--bs-body-color);
+  --bs-violet-100: #ede9fe; --bs-violet-200: #ddd6fe; --bs-violet-300: #c4b5fd; --bs-violet-600: #7c3aed; --bs-violet-700: #6d28d9; --bs-violet-900: #4c1d95;
+  --bs-amber-200: #fde68a; --bs-amber-300: #fcd34d; --bs-amber-400: #fbbf24; --bs-amber-500: #f59e0b; --bs-amber-600: #d97706; --bs-amber-700: #b45309; --bs-amber-800: #92400e;
+  --bs-indigo-500: #6366f1;
+}
+
+/* 3. Base type: one small, even scale --------------------------------------------------------------------- */
+html { font-size: var(--ca-font-size); }
+body { font-family: var(--ca-font); -webkit-font-smoothing: antialiased; }
+h1, .h1 { font-size: 1.6rem; } h2, .h2 { font-size: 1.3rem; } h3, .h3 { font-size: 1.15rem; }
+h4, .h4 { font-size: 1.05rem; } h5, .h5, h6, .h6 { font-size: 1rem; }
+h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.3; margin-bottom: .35rem; }
+small, .small { font-size: .875em; }
+a { color: var(--bs-link-color); text-decoration: none; }
+a:hover { color: var(--bs-link-hover-color); text-decoration: underline; text-underline-offset: 2px; }
+.btn:hover, .nav-link:hover, .dropdown-item:hover, .page-link:hover, .list-group-item:hover, .sidebar-brand a:hover, .small-box-footer:hover { text-decoration: none; }
+code { font-size: .85em; color: inherit; background: var(--bs-tertiary-bg); padding: .05rem .3rem; border-radius: calc(var(--ca-radius) * .6); }
+:focus-visible { outline: 2px solid rgba(var(--ca-primary-rgb), .6); outline-offset: 2px; }
+.visually-hidden-focusable:focus { position: fixed !important; top: .5rem; inset-inline-start: .5rem; z-index: 2000; padding: .4rem .75rem;
+  background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: var(--ca-radius); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+/* 4. Components ---------------------------------------------------------------------------------------- */
+.btn { --bs-btn-font-weight: 500; --bs-btn-font-size: .95rem; --bs-btn-padding-y: .34rem; --bs-btn-padding-x: .8rem;
+  display: inline-flex; align-items: center; justify-content: center; gap: .35rem; }
+.btn-sm { --bs-btn-font-size: .875rem; --bs-btn-padding-y: .2rem; --bs-btn-padding-x: .55rem; }
+.btn-lg { --bs-btn-font-size: 1.1rem; }
+.btn-primary {
+  --bs-btn-color: var(--ca-primary-contrast); --bs-btn-bg: var(--ca-primary); --bs-btn-border-color: var(--ca-primary);
+  --bs-btn-hover-color: var(--ca-primary-contrast); --bs-btn-hover-bg: color-mix(in srgb, var(--ca-primary) 86%, #000); --bs-btn-hover-border-color: color-mix(in srgb, var(--ca-primary) 82%, #000);
+  --bs-btn-active-color: var(--ca-primary-contrast); --bs-btn-active-bg: color-mix(in srgb, var(--ca-primary) 78%, #000); --bs-btn-active-border-color: color-mix(in srgb, var(--ca-primary) 74%, #000);
+  --bs-btn-disabled-color: var(--ca-primary-contrast); --bs-btn-disabled-bg: var(--ca-primary); --bs-btn-disabled-border-color: var(--ca-primary); --bs-btn-focus-shadow-rgb: var(--ca-primary-rgb);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--bs-primary-text-emphasis); --bs-btn-border-color: color-mix(in srgb, var(--ca-primary) 70%, transparent);
+  --bs-btn-hover-color: var(--ca-primary-contrast); --bs-btn-hover-bg: var(--ca-primary); --bs-btn-hover-border-color: var(--ca-primary);
+  --bs-btn-active-color: var(--ca-primary-contrast); --bs-btn-active-bg: var(--ca-primary); --bs-btn-active-border-color: var(--ca-primary);
+  --bs-btn-disabled-color: var(--bs-primary-text-emphasis); --bs-btn-disabled-border-color: color-mix(in srgb, var(--ca-primary) 50%, transparent);
+  --bs-btn-focus-shadow-rgb: var(--ca-primary-rgb);
+}
+.btn-success {
+  --bs-btn-color: #fff; --bs-btn-bg: var(--ca-success); --bs-btn-border-color: var(--ca-success);
+  --bs-btn-hover-color: #fff; --bs-btn-hover-bg: color-mix(in srgb, var(--ca-success) 86%, #000); --bs-btn-hover-border-color: color-mix(in srgb, var(--ca-success) 82%, #000);
+  --bs-btn-active-color: #fff; --bs-btn-active-bg: color-mix(in srgb, var(--ca-success) 78%, #000); --bs-btn-active-border-color: color-mix(in srgb, var(--ca-success) 74%, #000);
+  --bs-btn-disabled-color: #fff; --bs-btn-disabled-bg: var(--ca-success); --bs-btn-disabled-border-color: var(--ca-success); --bs-btn-focus-shadow-rgb: var(--ca-success-rgb);
+}
+.btn-outline-success {
+  --bs-btn-color: var(--bs-success-text-emphasis); --bs-btn-border-color: color-mix(in srgb, var(--ca-success) 70%, transparent);
+  --bs-btn-hover-color: #fff; --bs-btn-hover-bg: var(--ca-success); --bs-btn-hover-border-color: var(--ca-success);
+  --bs-btn-active-color: #fff; --bs-btn-active-bg: var(--ca-success); --bs-btn-active-border-color: var(--ca-success);
+  --bs-btn-disabled-color: var(--bs-success-text-emphasis); --bs-btn-disabled-border-color: color-mix(in srgb, var(--ca-success) 50%, transparent);
+  --bs-btn-focus-shadow-rgb: var(--ca-success-rgb);
+}
+.btn-warning {
+  --bs-btn-color: #000; --bs-btn-bg: var(--ca-warning); --bs-btn-border-color: var(--ca-warning);
+  --bs-btn-hover-color: #000; --bs-btn-hover-bg: color-mix(in srgb, var(--ca-warning) 86%, #000); --bs-btn-hover-border-color: color-mix(in srgb, var(--ca-warning) 82%, #000);
+  --bs-btn-active-color: #000; --bs-btn-active-bg: color-mix(in srgb, var(--ca-warning) 78%, #000); --bs-btn-active-border-color: color-mix(in srgb, var(--ca-warning) 74%, #000);
+  --bs-btn-disabled-color: #000; --bs-btn-disabled-bg: var(--ca-warning); --bs-btn-disabled-border-color: var(--ca-warning); --bs-btn-focus-shadow-rgb: var(--ca-warning-rgb);
+}
+.btn-outline-warning {
+  --bs-btn-color: var(--bs-warning-text-emphasis); --bs-btn-border-color: color-mix(in srgb, var(--ca-warning) 70%, transparent);
+  --bs-btn-hover-color: #000; --bs-btn-hover-bg: var(--ca-warning); --bs-btn-hover-border-color: var(--ca-warning);
+  --bs-btn-active-color: #000; --bs-btn-active-bg: var(--ca-warning); --bs-btn-active-border-color: var(--ca-warning);
+  --bs-btn-disabled-color: var(--bs-warning-text-emphasis); --bs-btn-disabled-border-color: color-mix(in srgb, var(--ca-warning) 50%, transparent);
+  --bs-btn-focus-shadow-rgb: var(--ca-warning-rgb);
+}
+.btn-danger {
+  --bs-btn-color: #fff; --bs-btn-bg: var(--ca-danger); --bs-btn-border-color: var(--ca-danger);
+  --bs-btn-hover-color: #fff; --bs-btn-hover-bg: color-mix(in srgb, var(--ca-danger) 86%, #000); --bs-btn-hover-border-color: color-mix(in srgb, var(--ca-danger) 82%, #000);
+  --bs-btn-active-color: #fff; --bs-btn-active-bg: color-mix(in srgb, var(--ca-danger) 78%, #000); --bs-btn-active-border-color: color-mix(in srgb, var(--ca-danger) 74%, #000);
+  --bs-btn-disabled-color: #fff; --bs-btn-disabled-bg: var(--ca-danger); --bs-btn-disabled-border-color: var(--ca-danger); --bs-btn-focus-shadow-rgb: var(--ca-danger-rgb);
+}
+.btn-outline-danger {
+  --bs-btn-color: var(--bs-danger-text-emphasis); --bs-btn-border-color: color-mix(in srgb, var(--ca-danger) 70%, transparent);
+  --bs-btn-hover-color: #fff; --bs-btn-hover-bg: var(--ca-danger); --bs-btn-hover-border-color: var(--ca-danger);
+  --bs-btn-active-color: #fff; --bs-btn-active-bg: var(--ca-danger); --bs-btn-active-border-color: var(--ca-danger);
+  --bs-btn-disabled-color: var(--bs-danger-text-emphasis); --bs-btn-disabled-border-color: color-mix(in srgb, var(--ca-danger) 50%, transparent);
+  --bs-btn-focus-shadow-rgb: var(--ca-danger-rgb);
+}
+.btn-info {
+  --bs-btn-color: #000; --bs-btn-bg: var(--ca-info); --bs-btn-border-color: var(--ca-info);
+  --bs-btn-hover-color: #000; --bs-btn-hover-bg: color-mix(in srgb, var(--ca-info) 86%, #000); --bs-btn-hover-border-color: color-mix(in srgb, var(--ca-info) 82%, #000);
+  --bs-btn-active-color: #000; --bs-btn-active-bg: color-mix(in srgb, var(--ca-info) 78%, #000); --bs-btn-active-border-color: color-mix(in srgb, var(--ca-info) 74%, #000);
+  --bs-btn-disabled-color: #000; --bs-btn-disabled-bg: var(--ca-info); --bs-btn-disabled-border-color: var(--ca-info); --bs-btn-focus-shadow-rgb: var(--ca-info-rgb);
+}
+.btn-outline-info {
+  --bs-btn-color: var(--bs-info-text-emphasis); --bs-btn-border-color: color-mix(in srgb, var(--ca-info) 70%, transparent);
+  --bs-btn-hover-color: #000; --bs-btn-hover-bg: var(--ca-info); --bs-btn-hover-border-color: var(--ca-info);
+  --bs-btn-active-color: #000; --bs-btn-active-bg: var(--ca-info); --bs-btn-active-border-color: var(--ca-info);
+  --bs-btn-disabled-color: var(--bs-info-text-emphasis); --bs-btn-disabled-border-color: color-mix(in srgb, var(--ca-info) 50%, transparent);
+  --bs-btn-focus-shadow-rgb: var(--ca-info-rgb);
+}
+.btn-soft-primary {
+  --bs-btn-color: var(--bs-primary-text-emphasis); --bs-btn-bg: var(--bs-primary-bg-subtle); --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--bs-primary-text-emphasis); --bs-btn-hover-bg: color-mix(in srgb, var(--bs-primary-bg-subtle) 80%, var(--bs-primary-text-emphasis)); --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: var(--bs-primary-text-emphasis); --bs-btn-active-bg: color-mix(in srgb, var(--bs-primary-bg-subtle) 70%, var(--bs-primary-text-emphasis)); --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-color: var(--bs-primary-text-emphasis); --bs-btn-disabled-bg: var(--bs-primary-bg-subtle); --bs-btn-disabled-border-color: transparent;
+}
+.btn-soft-success {
+  --bs-btn-color: var(--bs-success-text-emphasis); --bs-btn-bg: var(--bs-success-bg-subtle); --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--bs-success-text-emphasis); --bs-btn-hover-bg: color-mix(in srgb, var(--bs-success-bg-subtle) 80%, var(--bs-success-text-emphasis)); --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: var(--bs-success-text-emphasis); --bs-btn-active-bg: color-mix(in srgb, var(--bs-success-bg-subtle) 70%, var(--bs-success-text-emphasis)); --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-color: var(--bs-success-text-emphasis); --bs-btn-disabled-bg: var(--bs-success-bg-subtle); --bs-btn-disabled-border-color: transparent;
+}
+.btn-soft-warning {
+  --bs-btn-color: var(--bs-warning-text-emphasis); --bs-btn-bg: var(--bs-warning-bg-subtle); --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--bs-warning-text-emphasis); --bs-btn-hover-bg: color-mix(in srgb, var(--bs-warning-bg-subtle) 80%, var(--bs-warning-text-emphasis)); --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: var(--bs-warning-text-emphasis); --bs-btn-active-bg: color-mix(in srgb, var(--bs-warning-bg-subtle) 70%, var(--bs-warning-text-emphasis)); --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-color: var(--bs-warning-text-emphasis); --bs-btn-disabled-bg: var(--bs-warning-bg-subtle); --bs-btn-disabled-border-color: transparent;
+}
+.btn-soft-danger {
+  --bs-btn-color: var(--bs-danger-text-emphasis); --bs-btn-bg: var(--bs-danger-bg-subtle); --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--bs-danger-text-emphasis); --bs-btn-hover-bg: color-mix(in srgb, var(--bs-danger-bg-subtle) 80%, var(--bs-danger-text-emphasis)); --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: var(--bs-danger-text-emphasis); --bs-btn-active-bg: color-mix(in srgb, var(--bs-danger-bg-subtle) 70%, var(--bs-danger-text-emphasis)); --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-color: var(--bs-danger-text-emphasis); --bs-btn-disabled-bg: var(--bs-danger-bg-subtle); --bs-btn-disabled-border-color: transparent;
+}
+.btn-soft-info {
+  --bs-btn-color: var(--bs-info-text-emphasis); --bs-btn-bg: var(--bs-info-bg-subtle); --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--bs-info-text-emphasis); --bs-btn-hover-bg: color-mix(in srgb, var(--bs-info-bg-subtle) 80%, var(--bs-info-text-emphasis)); --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: var(--bs-info-text-emphasis); --bs-btn-active-bg: color-mix(in srgb, var(--bs-info-bg-subtle) 70%, var(--bs-info-text-emphasis)); --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-color: var(--bs-info-text-emphasis); --bs-btn-disabled-bg: var(--bs-info-bg-subtle); --bs-btn-disabled-border-color: transparent;
+}
+.btn-soft-secondary {
+  --bs-btn-color: var(--bs-secondary-text-emphasis); --bs-btn-bg: var(--bs-secondary-bg-subtle); --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--bs-secondary-text-emphasis); --bs-btn-hover-bg: color-mix(in srgb, var(--bs-secondary-bg-subtle) 80%, var(--bs-secondary-text-emphasis)); --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: var(--bs-secondary-text-emphasis); --bs-btn-active-bg: color-mix(in srgb, var(--bs-secondary-bg-subtle) 70%, var(--bs-secondary-text-emphasis)); --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-color: var(--bs-secondary-text-emphasis); --bs-btn-disabled-bg: var(--bs-secondary-bg-subtle); --bs-btn-disabled-border-color: transparent;
+}
+.btn-outline-secondary { --bs-btn-color: var(--bs-body-color); --bs-btn-bg: var(--bs-body-bg); --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-color: var(--bs-emphasis-color); --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-border-color: color-mix(in srgb, var(--bs-border-color) 70%, var(--bs-body-color));
+  --bs-btn-active-color: var(--bs-emphasis-color); --bs-btn-active-bg: var(--bs-secondary-bg); --bs-btn-active-border-color: var(--bs-border-color); }
+.btn-ghost { --bs-btn-color: var(--bs-secondary-color); --bs-btn-bg: transparent; --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--bs-emphasis-color); --bs-btn-hover-bg: var(--ca-hover); --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-bg: var(--ca-hover); --bs-btn-active-border-color: transparent; }
+.btn-icon { width: 2.2rem; height: 2.2rem; padding: 0; flex: 0 0 auto; }
+.btn-sm.btn-icon { width: 1.85rem; height: 1.85rem; }
+.btn-link { --bs-btn-color: var(--bs-link-color); --bs-btn-hover-color: var(--bs-link-hover-color); --bs-btn-active-color: var(--bs-link-hover-color); text-decoration: none; }
+
+/* Forms: compact controls; selects that still carry .form-control get the select arrow. */
+.form-control, .form-select { font-size: .95rem; padding: .32rem .6rem; }
+.form-control-sm, .form-select-sm { font-size: .875rem; padding: .2rem .5rem; min-height: calc(1.5em + .4rem + 2px); }
+select.form-control:not([multiple]):not([size]) { padding-inline-end: 2rem; appearance: none;
+  background: var(--bs-body-bg) var(--bs-form-select-bg-img) no-repeat right .55rem center / 14px 10px; }
+select.form-control-sm:not([multiple]):not([size]) { padding-inline-end: 1.8rem; }
+.form-control:focus, .form-select:focus { border-color: color-mix(in srgb, var(--ca-primary) 55%, var(--bs-border-color));
+  box-shadow: 0 0 0 .2rem rgba(var(--ca-primary-rgb), .18); }
+.form-control::placeholder { color: var(--bs-secondary-color); opacity: .8; }
+textarea.form-control { min-height: 4.5rem; }
+.form-label { margin-bottom: .25rem; font-size: .9rem; font-weight: 600; }
+.form-label.required::after { content: " *"; color: var(--bs-danger); }
+.form-text { margin-top: .2rem; font-size: .85rem; }
+.form-check-input:checked { background-color: var(--ca-primary); border-color: var(--ca-primary); }
+.form-check-input:focus { border-color: color-mix(in srgb, var(--ca-primary) 55%, var(--bs-border-color)); box-shadow: 0 0 0 .2rem rgba(var(--ca-primary-rgb), .2); }
+input[type="checkbox"], input[type="radio"], .form-range { accent-color: var(--ca-primary); }
+.form-range::-webkit-slider-thumb { background-color: var(--ca-primary); }
+.form-range::-moz-range-thumb { background-color: var(--ca-primary); }
+.form-field { display: flex; align-items: center; gap: .5rem; }
+.form-field > .form-check-input { margin: 0; flex: 0 0 auto; }
+
+/* Navigation pieces that Bootstrap colours with literal blues */
+.nav-pills { --bs-nav-pills-link-active-bg: var(--ca-primary); --bs-nav-pills-link-active-color: var(--ca-primary-contrast); }
+.nav-tabs { --bs-nav-tabs-link-active-color: var(--bs-emphasis-color); }
+.nav-tabs .nav-link, .nav-pills .nav-link { font-size: .95rem; font-weight: 500; }
+.nav-tabs .nav-link:not(.active) { color: var(--bs-secondary-color); }
+.pagination { --bs-pagination-active-bg: var(--ca-primary); --bs-pagination-active-border-color: var(--ca-primary);
+  --bs-pagination-color: var(--bs-link-color); --bs-pagination-hover-color: var(--bs-link-hover-color); --bs-pagination-focus-box-shadow: 0 0 0 .2rem rgba(var(--ca-primary-rgb), .2); }
+.progress, .progress-stacked { --bs-progress-bar-bg: var(--ca-primary); --bs-progress-height: .5rem; }
+.dropdown-menu { --bs-dropdown-link-active-bg: var(--ca-primary); --bs-dropdown-link-active-color: var(--ca-primary-contrast);
+  --bs-dropdown-font-size: .95rem; --bs-dropdown-item-padding-y: .35rem; --bs-dropdown-box-shadow: var(--ca-shadow-pop); box-shadow: var(--ca-shadow-pop); }
+.dropdown-item { display: flex; align-items: center; gap: .55rem; }
+.dropdown-item > .bi { width: 1rem; color: var(--bs-secondary-color); }
+.dropdown-item:active > .bi, .dropdown-item.active > .bi { color: inherit; }
+button.dropdown-item { border: 0; background: none; width: 100%; text-align: start; }
+.list-group { --bs-list-group-active-bg: var(--ca-primary); --bs-list-group-active-border-color: var(--ca-primary); --bs-list-group-active-color: var(--ca-primary-contrast); }
+.breadcrumb { --bs-breadcrumb-font-size: .875rem; --bs-breadcrumb-margin-bottom: .15rem; }
+.badge { --bs-badge-font-weight: 600; --bs-badge-font-size: .78em; }
+.text-bg-primary { color: var(--ca-primary-contrast) !important; }
+
+/* Cards: AdminLTE cards with the theme radius and a compact rhythm */
+.card { --bs-card-spacer-y: .85rem; --bs-card-spacer-x: 1rem; --bs-card-cap-padding-y: .6rem; --bs-card-cap-padding-x: 1rem;
+  --bs-card-border-radius: var(--bs-border-radius-lg); --bs-card-inner-border-radius: calc(var(--bs-border-radius-lg) - 1px); }
+.card-header { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; background: transparent; font-weight: 600; }
+.card-header > .bi { color: var(--ca-primary); }
+.card-header .ca-actions { margin-inline-start: auto; display: flex; flex-wrap: wrap; gap: .375rem; align-items: center; font-weight: 400; }
+.card-footer { background: var(--bs-tertiary-bg); }
+.card.card-outline-primary { border-top: 3px solid var(--ca-primary); }
+
+/* Tables */
+.table { --bs-table-hover-bg: var(--ca-hover); font-size: .95rem; margin-bottom: 0; }
+.table > :not(caption) > * > * { padding: .5rem .7rem; vertical-align: middle; }
+.table-sm > :not(caption) > * > * { padding: .3rem .55rem; }
+.table thead th { background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); font-weight: 600; font-size: .82rem;
+  text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+.table .ca-col-actions { width: 1%; white-space: nowrap; text-align: end; }
+
+/* Alerts keep an icon column */
+.alert { --bs-alert-padding-y: .6rem; --bs-alert-padding-x: .85rem; display: flex; align-items: flex-start; gap: .6rem; font-size: .95rem; overflow-wrap: anywhere; }
+.alert > .bi { flex: 0 0 auto; font-size: 1.05rem; line-height: 1.35rem; }
+.alert .alert-body { flex: 1 1 auto; min-width: 0; }
+
+/* Modals. A form may wrap header, body and footer; it lays out as if it were not there. */
+.modal { --bs-modal-padding: 1rem; --bs-modal-header-padding: .8rem 1rem; --bs-modal-footer-gap: .5rem;
+  --bs-modal-border-radius: var(--bs-border-radius-lg); --bs-modal-inner-border-radius: calc(var(--bs-border-radius-lg) - 1px); }
+.modal-content > form { display: contents; }
+.modal-title { font-size: 1.1rem; font-weight: 600; }
+.modal-header .btn-close { margin-inline-start: auto; }
+.modal-footer { background: var(--bs-tertiary-bg); }
+.modal-dialog-scrollable .modal-content { overflow: hidden; }
+/* Side docks: modals that slide in from the right edge (static/js/docks.js marks them). */
+.modal.ca-side-dock .modal-dialog { position: fixed; inset: 0 0 0 auto; margin: 0; width: min(var(--ca-dock-width, 34rem), 100vw);
+  max-width: none; height: 100%; max-height: none; transform: translateX(100%); transition: transform .22s ease-out; }
+.modal.ca-side-dock.show .modal-dialog { transform: none; }
+.modal.ca-side-dock .modal-content { height: 100%; max-height: none; border: 0; border-radius: 0; }
+.modal.ca-side-dock .modal-body { overflow-y: auto; overscroll-behavior: contain; }
+.modal.ca-side-dock.modal-xl-dock { --ca-dock-width: 58rem; }
+.modal.ca-side-dock.modal-sm-dock { --ca-dock-width: 29rem; }
+
+/* 5. Density ------------------------------------------------------------------------------------------- */
+[data-density="comfortable"] .card { --bs-card-spacer-y: 1.1rem; --bs-card-spacer-x: 1.25rem; --bs-card-cap-padding-y: .8rem; --bs-card-cap-padding-x: 1.25rem; }
+[data-density="comfortable"] .table > :not(caption) > * > * { padding: .7rem .85rem; }
+[data-density="comfortable"] .btn { --bs-btn-padding-y: .42rem; --bs-btn-padding-x: .95rem; }
+[data-density="comfortable"] .form-control, [data-density="comfortable"] .form-select { padding: .42rem .7rem; }

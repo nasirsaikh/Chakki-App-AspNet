@@ -1,0 +1,17 @@
+@model Customer
+@{ ViewData["Title"] = Model.Id == 0 ? T["Add customer"].Value : T["Edit customer"].Value; }
+<div class="card"><div class="card-body">
+  <form asp-antiforgery="true" method="post" action="/customers/save">
+    <input type="hidden" name="Id" value="@Model.Id">
+    <div class="ca-form-grid">
+      <div><label class="form-label" for="Name">@T["Name"]</label><input class="form-control" id="Name" name="Name" value="@Model.Name" required maxlength="120" autofocus></div>
+      <div><label class="form-label" for="Phone">@T["Phone"]</label><input class="form-control" id="Phone" name="Phone" value="@Model.Phone" inputmode="tel" maxlength="20"></div>
+      <div><label class="form-label" for="Village">@T["Village"]</label><input class="form-control" id="Village" name="Village" value="@Model.Village" maxlength="80"></div>
+      <div><label class="form-label" for="Kind">@T["Type"]</label><select class="form-select" id="Kind" name="Kind"><option value="Permanent" selected="@(Model.Kind == CustomerKind.Permanent)">@T["Permanent"]</option><option value="Temporary" selected="@(Model.Kind == CustomerKind.Temporary)">@T["Temporary"]</option></select></div>
+      <div><label class="form-label" for="Address">@T["Address"]</label><input class="form-control" id="Address" name="Address" value="@Model.Address" maxlength="200"></div>
+      <div><label class="form-label" for="Notes">@T["Notes"]</label><input class="form-control" id="Notes" name="Notes" value="@Model.Notes" maxlength="300"></div>
+    </div>
+    @if (Model.Id != 0) { <div class="form-check mt-3"><input class="form-check-input" type="checkbox" id="IsActive" name="IsActive" value="true" checked="@Model.IsActive"><label class="form-check-label" for="IsActive">@T["Active"]</label></div> }
+    <div class="ca-form-actions"><a class="btn btn-outline-secondary" href="/customers">@T["Cancel"]</a><button class="btn btn-primary" type="submit">@T["Save"]</button></div>
+  </form>
+</div></div>

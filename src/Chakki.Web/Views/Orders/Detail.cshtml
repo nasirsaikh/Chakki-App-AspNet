@@ -1,0 +1,143 @@
+@model Chakki.Web.Controllers.OrderDetailModel
+@{
+    var o = Model.Order;
+    var hi = T.Hi();
+    ViewData["Title"] = $"{o.Ref} · {o.Customer!.Name}";
+    var steps = new[] { OrderStatus.Intake, OrderStatus.Grinding, OrderStatus.Ready, OrderStatus.Delivered };
+    var idx = Array.IndexOf(steps, o.Status);
+    var floor = User.IsInRole("Owner") || User.IsInRole("Manager") || User.IsInRole("Operator");
+    string inv(decimal d) => d.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+}
+@section Actions {
+  <partial name="_OrderStatus" model="o.Status" />
+  <partial name="_PaymentState" model="o.PaymentState" />
+}
+@if (o.Status != OrderStatus.Cancelled)
+{
+  <div class="ca-steps" aria-label="@T["Progress"]">
+    @for (var i = 0; i < steps.Length; i++)
+    {
+      <span class="@(i < idx ? "done" : i == idx ? "current" : "")">@T[steps[i] switch { OrderStatus.Intake => "Received", OrderStatus.Grinding => "Grinding", OrderStatus.Ready => "Ready", _ => "Delivered" }]</span>
+    }
+  </div>
+}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-body">
+        <dl class="ca-summary">
+          <div><dt>@T["Customer"]</dt><dd><a href="/customers/@o.CustomerId">@o.Customer.Name</a></dd></div>
+          <div><dt>@T["Bill total"]</dt><dd>@Fmt.Rs(o.Total)</dd></div>
+          <div><dt>@T["Forgiven"]</dt><dd>@Fmt.Rs(o.Forgiven)</dd></div>
+          <div><dt>@T["Paid"]</dt><dd>@Fmt.Rs(o.Paid)</dd></div>
+          <div><dt>@T["Outstanding"]</dt><dd class="@(o.Outstanding > 0 ? "text-danger" : "")">@(o.BilledAt == null ? T["Not billed"].Value : Fmt.Rs(o.Outstanding))</dd></div>
+          <div><dt>@T["Received on"]</dt><dd>@Fmt.Date(o.CreatedAt)</dd></div>
+        </dl>
+        @if (!string.IsNullOrEmpty(o.Notes)) { <p class="mt-2 mb-0 text-body-secondary">@o.Notes</p> }
+      </div>
+    </div>
+    <div class="card mb-3">
+      <div class="card-header"><h2 class="card-title">@T["Grain and service"]</h2></div>
+      <div class="ca-table-wrap">
+        <table class="table">
+          <thead><tr><th>@T["Service"]</th><th class="num">@T["Weight"]</th><th class="num">@T["System rate"]</th><th class="num">@T["Applied rate"]</th><th class="num">@T["Amount"]</th></tr></thead>
+          <tbody>
+          @foreach (var l in o.Lines)
+          {
+            <tr><td>@(hi && l.RateCard?.ServiceHi != null ? l.RateCard.ServiceHi : l.RateCard?.Label)@if (l.OverrideReason != null) { <br><small class="text-body-secondary"><i class="bi bi-pencil" aria-hidden="true"></i> @l.OverrideReason</small> }</td>
+              <td class="num">@Fmt.Qty(l.WeightKg) kg</td><td class="num">@Fmt.Rs(l.SystemRate)</td><td class="num">@Fmt.Rs(l.AppliedRate)</td><td class="num">@Fmt.Rs(l.Amount)</td></tr>
+          }
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">@T["Payments"]</h2></div>
+      @if (o.Payments.Count == 0) { <div class="ca-empty">@T["No payments yet."]</div> }
+      else
+      {
+        <div class="ca-table-wrap"><table class="table">
+          <thead><tr><th>@T["Method"]</th><th class="num">@T["Amount"]</th><th>@T["Status"]</th><th>@T["Reference"]</th><th>@T["Date"]</th></tr></thead>
+          <tbody>
+          @foreach (var p in o.Payments.OrderByDescending(p => p.Id))
+          {
+            <tr><td>@T[p.Method.ToString()]</td><td class="num">@Fmt.Rs(p.Amount)</td>
+              <td><span class="ca-pill @(p.Status == SettlementStatus.Settled ? "ca-pill-success" : p.Status == SettlementStatus.Pending ? "ca-pill-warning" : "")">@T[p.Status.ToString()]</span></td>
+              <td>@if (p.Status == SettlementStatus.Pending && p.Method is PaymentMethod.UpiQr or PaymentMethod.Card) { <a href="/pay/@p.Reference">@T["Open payment screen"]</a> } else { <small class="text-body-secondary">@(p.ProviderPaymentId ?? p.Reference[..Math.Min(12, p.Reference.Length)])</small> }</td>
+              <td>@Fmt.Date(p.SettledAt ?? p.CreatedAt)</td></tr>
+          }
+          </tbody>
+        </table></div>
+      }
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    @if (floor && o.Status != OrderStatus.Cancelled)
+    {
+      <div class="card mb-3">
+        <div class="card-header"><h2 class="card-title">@T["Next step"]</h2></div>
+        <div class="card-body d-flex flex-wrap gap-2">
+          @if (o.Status == OrderStatus.Intake)
+          {
+            <form asp-antiforgery="true" method="post" action="/orders/@o.Id/status"><input type="hidden" name="to" value="Grinding"><button class="btn btn-primary"><i class="bi bi-play-fill" aria-hidden="true"></i> @T["Start grinding"]</button></form>
+            @if (o.BilledAt == null) { <form asp-antiforgery="true" method="post" action="/orders/@o.Id/status" data-ca-confirm="@T["Cancel this order?"]"><input type="hidden" name="to" value="Cancelled"><button class="btn btn-outline-danger">@T["Cancel order"]</button></form> }
+          }
+          else if (o.Status == OrderStatus.Grinding)
+          {
+            <form asp-antiforgery="true" method="post" action="/orders/@o.Id/status"><input type="hidden" name="to" value="Ready"><button class="btn btn-primary"><i class="bi bi-check2-circle" aria-hidden="true"></i> @T["Mark ready"]</button></form>
+          }
+          else if (o.Status == OrderStatus.Ready)
+          {
+            <form asp-antiforgery="true" method="post" action="/orders/@o.Id/status"><input type="hidden" name="to" value="Delivered"><button class="btn @(o.BilledAt != null ? "btn-primary" : "btn-outline-secondary")"><i class="bi bi-truck" aria-hidden="true"></i> @T["Hand over to customer"]</button></form>
+          }
+          else { <p class="mb-0 text-body-secondary">@T["Delivered on"] @Fmt.Date(o.DeliveredAt ?? o.CreatedAt).</p> }
+        </div>
+      </div>
+
+      @if (o.BilledAt == null)
+      {
+        <div class="card mb-3">
+          <div class="card-header"><h2 class="card-title">@T["Bill this order"]</h2></div>
+          <div class="card-body">
+            <form asp-antiforgery="true" method="post" action="/orders/@o.Id/bill">
+              <div class="ca-total-bar mb-3"><span>@T["Bill total"]</span><strong>@Fmt.Rs(o.Total)</strong></div>
+              <div class="row g-2">
+                <div class="col-6"><label class="form-label" for="forgiven">@T["Forgive (₹)"]</label><input class="form-control" id="forgiven" name="forgiven" type="number" step="0.01" min="0" max="@inv(o.Total)" value="0" inputmode="decimal"><div class="form-text">@T["Round-off or goodwill; never added to Udhaar."]</div></div>
+                <div class="col-6"><label class="form-label" for="paidNow">@T["Cash paid now (₹)"]</label><input class="form-control" id="paidNow" name="paidNow" type="number" step="0.01" min="0" max="@inv(o.Total)" inputmode="decimal"><div class="form-text">@T["Leave empty if the customer pays later (Udhaar) or by UPI."]</div></div>
+              </div>
+              <div class="ca-form-actions"><button class="btn btn-primary" type="submit"><i class="bi bi-receipt" aria-hidden="true"></i> @T["Save bill"]</button></div>
+            </form>
+          </div>
+        </div>
+      }
+      else if (o.Outstanding > 0)
+      {
+        <div class="card mb-3">
+          <div class="card-header"><h2 class="card-title">@T["Take payment"] · @Fmt.Rs(o.Outstanding)</h2></div>
+          <div class="card-body">
+            <form asp-antiforgery="true" method="post" action="/orders/@o.Id/cash" class="mb-3">
+              <label class="form-label" for="cash-amount"><i class="bi bi-cash" aria-hidden="true"></i> @T["Cash"]</label>
+              <div class="input-group"><span class="input-group-text">₹</span><input class="form-control" id="cash-amount" name="amount" type="number" step="0.01" min="0.01" max="@inv(o.Outstanding)" value="@inv(o.Outstanding)" inputmode="decimal" required><button class="btn btn-primary" type="submit">@T["Record cash"]</button></div>
+            </form>
+            @if (Model.Gateways.Count == 0)
+            {
+              <div class="alert alert-info mb-0"><i class="bi bi-info-circle" aria-hidden="true"></i> <div>@T["To accept UPI QR or card, add your UPI ID or Razorpay keys in"] <a href="/settings/payments">@T["Settings → Payments"]</a>.</div></div>
+            }
+            else
+            {
+              <form asp-antiforgery="true" method="post" action="/orders/@o.Id/online">
+                <label class="form-label"><i class="bi bi-qr-code" aria-hidden="true"></i> @T["UPI QR or card"]</label>
+                <div class="row g-2">
+                  <div class="col-sm-6"><select class="form-select" name="gatewayId" aria-label="@T["Gateway"]">@foreach (var g in Model.Gateways) { <option value="@g.Id">@g.Name</option> }</select></div>
+                  <div class="col-sm-6"><select class="form-select" name="method" aria-label="@T["Method"]"><option value="UpiQr">@T["UPI QR"]</option><option value="Card">@T["Card / UPI app (Razorpay)"]</option></select></div>
+                  <div class="col-12"><div class="input-group"><span class="input-group-text">₹</span><input class="form-control" name="amount" type="number" step="0.01" min="1" max="@inv(o.Outstanding)" value="@inv(o.Outstanding)" inputmode="decimal" required aria-label="@T["Amount"]"><button class="btn btn-outline-primary" type="submit">@T["Show QR / pay link"]</button></div></div>
+                </div>
+              </form>
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>

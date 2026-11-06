@@ -1,0 +1,18 @@
+@model Chakki.Web.Controllers.OrderListModel
+@{ ViewData["Title"] = T["Grinding orders"].Value; ViewData["Lead"] = T["Intake → Grinding → Ready → Delivered. Search by name, village, phone or order number."].Value; }
+@section Actions { <a class="btn btn-primary" href="/orders/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["New order"]</a> }
+<div class="card">
+  <div class="card-body pb-0">
+    <form class="ca-filter" method="get" hx-get="/orders" hx-target="#order-rows" hx-trigger="input changed delay:300ms from:input, change from:select" hx-push-url="true">
+      <input class="form-control" type="search" name="q" value="@Model.Q" placeholder="@T["Search orders"]" aria-label="@T["Search orders"]">
+      <select class="form-select w-auto" name="status" aria-label="@T["Status"]">
+        <option value="">@T["All"]</option>
+        <option value="open" selected="@(Model.Status == "open")">@T["Not delivered"]</option>
+        <option value="unpaid" selected="@(Model.Status == "unpaid")">@T["Unpaid"]</option>
+        <option value="delivered" selected="@(Model.Status == "delivered")">@T["Delivered"]</option>
+      </select>
+      <noscript><button class="btn btn-outline-secondary">@T["Search"]</button></noscript>
+    </form>
+  </div>
+  <div id="order-rows"><partial name="_Rows" model="Model" /></div>
+</div>

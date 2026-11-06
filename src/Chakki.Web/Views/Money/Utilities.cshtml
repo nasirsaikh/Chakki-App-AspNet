@@ -1,0 +1,24 @@
+@model List<UtilityExpense>
+@{ ViewData["Title"] = T["Utilities"].Value; ViewData["Lead"] = T["Electricity, diesel, water and other running costs."].Value; }
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card">
+    @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-lightning-charge"></i>@T["No expenses yet."]</div> }
+    else
+    {
+      <div class="ca-table-wrap"><table class="table">
+        <thead><tr><th>@T["Date"]</th><th>@T["Type"]</th><th class="num">@T["Units"]</th><th class="num">@T["Amount"]</th><th>@T["Note"]</th></tr></thead>
+        <tbody>@foreach (var u in Model) { <tr><td>@Fmt.Date(u.Date)</td><td>@T[u.Kind]</td><td class="num">@(u.Units is { } x ? Fmt.Qty(x) : "")</td><td class="num">@Fmt.Rs(u.Amount)</td><td>@u.Note</td></tr> }</tbody>
+      </table></div>
+    }
+  </div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["Add expense"]</h2></div><div class="card-body">
+    <form asp-antiforgery="true" method="post" action="/utilities">
+      <label class="form-label" for="uk">@T["Type"]</label><select class="form-select mb-2" id="uk" name="kind">@foreach (var k in new[] { "Electricity", "Diesel", "Water", "Rent", "Transport", "Other" }) { <option value="@k">@T[k]</option> }</select>
+      <div class="row g-2 mb-2"><div class="col-6"><label class="form-label" for="ua">@T["Amount"]</label><input class="form-control" id="ua" name="amount" type="number" step="0.01" min="0.01" required inputmode="decimal"></div>
+        <div class="col-6"><label class="form-label" for="uu">@T["Units (kWh / litre)"]</label><input class="form-control" id="uu" name="units" type="number" step="0.01" min="0" inputmode="decimal"></div></div>
+      <label class="form-label" for="ud">@T["Date"]</label><input class="form-control mb-2" id="ud" name="date" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")">
+      <label class="form-label" for="un">@T["Note"]</label><input class="form-control mb-3" id="un" name="note" maxlength="200">
+      <button class="btn btn-primary w-100">@T["Save (paid in cash)"]</button>
+    </form>
+  </div></div></div>
+</div>

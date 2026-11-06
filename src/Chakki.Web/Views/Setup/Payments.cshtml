@@ -1,0 +1,41 @@
+@model List<PaymentGateway>
+@{ ViewData["Title"] = T["Payment gateways"].Value; ViewData["Lead"] = T["Where UPI and card payments go. Secrets are stored encrypted and never shown again."].Value; var e = ViewBag.Edit as PaymentGateway; var host = $"{Context.Request.Scheme}://{Context.Request.Host}"; }
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3">
+      @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-qr-code"></i>@T["No gateway yet. Add your UPI ID to start showing QR codes."]</div> }
+      else
+      {
+        <div class="list-group list-group-flush">@foreach (var g in Model) {
+          <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="/settings/payments?id=@g.Id">
+            <span><strong>@g.Name</strong><br><small class="text-body-secondary">@g.Provider · @(g.UpiVpa ?? g.KeyId) · @T["Webhook secret"]: @(g.WebhookSecretProtected != null ? T["set"] : T["not set"])</small></span>
+            <span class="ca-pill @(g.IsActive ? "ca-pill-success" : "")">@(g.IsActive ? (g.IsDefault ? T["Default"] : T["Active"]) : T["Off"])</span>
+          </a> }</div>
+      }
+    </div>
+    <div class="card"><div class="card-body small">
+      <p class="fw-semibold mb-1">@T["Webhook addresses for your provider"]</p>
+      <p class="mb-1">@T["Bank / UPI provider (HMAC-SHA256 of the raw body):"]<br><code>@host/api/v1/payments/qr-webhook</code></p>
+      <p class="mb-1">@T["Razorpay (events payment.captured, order.paid):"]<br><code>@host/api/v1/payments/razorpay-webhook</code></p>
+      <p class="mb-0 text-body-secondary">@T["A plain UPI ID has no callback: after the money shows in your bank app, confirm the payment with its UTR number."]</p>
+    </div></div>
+  </div>
+  <div class="col-lg-6"><div class="card"><div class="card-header"><h2 class="card-title">@(e == null ? T["Add gateway"] : T["Edit"] + " " + e.Name)</h2></div><div class="card-body">
+    <form asp-antiforgery="true" method="post" action="/settings/payments" autocomplete="off">
+      <input type="hidden" name="id" value="@(e?.Id ?? 0)">
+      <div class="ca-form-grid">
+        <div><label class="form-label" for="gn">@T["Name"]</label><input class="form-control" id="gn" name="name" value="@(e?.Name ?? "UPI / Bank QR")" required></div>
+        <div><label class="form-label" for="gp">@T["Provider"]</label><select class="form-select" id="gp" name="provider">@foreach (var p in Enum.GetValues<GatewayProvider>()) { <option value="@p" selected="@(e?.Provider == p)">@(p switch { GatewayProvider.UpiQr => "UPI / Bank QR", GatewayProvider.Razorpay => "Razorpay (card + UPI)", _ => "Custom bank / UPI provider" })</option> }</select></div>
+        <div><label class="form-label" for="gv">@T["UPI ID (VPA)"]</label><input class="form-control" id="gv" name="upiVpa" value="@e?.UpiVpa" placeholder="chakki@okaxis"></div>
+        <div><label class="form-label" for="gm">@T["Merchant name on QR"]</label><input class="form-control" id="gm" name="merchantName" value="@e?.MerchantName"></div>
+        <div><label class="form-label" for="gk">@T["Key ID (Razorpay)"]</label><input class="form-control" id="gk" name="keyId" value="@e?.KeyId" placeholder="rzp_live_…"></div>
+        <div><label class="form-label" for="gs">@T["Key secret"]</label><input class="form-control" id="gs" name="apiSecret" type="password" placeholder="@(e?.ApiSecretProtected != null ? T["•••••• stored — leave blank to keep"] : "")" autocomplete="new-password"></div>
+        <div><label class="form-label" for="gw">@T["Webhook secret"]</label><input class="form-control" id="gw" name="webhookSecret" type="password" minlength="24" placeholder="@(e?.WebhookSecretProtected != null ? T["•••••• stored — leave blank to keep"] : T["at least 24 random characters"])" autocomplete="new-password"></div>
+        <div><label class="form-label" for="gh">@T["Signature header"]</label><input class="form-control" id="gh" name="signatureHeader" value="@(e?.SignatureHeader ?? "X-Chakki-Signature")"></div>
+      </div>
+      <div class="form-check mt-3"><input class="form-check-input" type="checkbox" id="ga" name="isActive" value="true" checked="@(e?.IsActive ?? true)"><label class="form-check-label" for="ga">@T["Active"]</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" id="gd" name="isDefault" value="true" checked="@(e?.IsDefault ?? Model.Count == 0)"><label class="form-check-label" for="gd">@T["Default gateway"]</label></div>
+      <div class="ca-form-actions">@if (e != null) { <a class="btn btn-outline-secondary" href="/settings/payments">@T["New instead"]</a> }<button class="btn btn-primary">@T["Save gateway"]</button></div>
+    </form>
+  </div></div></div>
+</div>

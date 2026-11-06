@@ -1,0 +1,8 @@
+@model Chakki.Web.Controllers.DashboardStats
+<div class="ca-stats" id="dash-stats" hx-get="/dashboard/stats" hx-trigger="every 30s" hx-swap="outerHTML">
+  <div class="ca-stat"><span class="label"><i class="bi bi-basket" aria-hidden="true"></i> @T["Ground today"]</span><span class="value">@Fmt.Qty(Model.TodayKg) kg</span></div>
+  <div class="ca-stat"><span class="label"><i class="bi bi-graph-up-arrow" aria-hidden="true"></i> @T["Net income today"]</span><span class="value">@Fmt.Rs(Model.TodayIncome - Model.TodayExpense)</span><span class="hint">@T["Income"] @Fmt.Rs(Model.TodayIncome) · @T["Expenses"] @Fmt.Rs(Model.TodayExpense)</span></div>
+  <div class="ca-stat"><span class="label"><i class="bi bi-wallet2" aria-hidden="true"></i> @T["Cash in hand"]</span><span class="value">@Fmt.Rs(Model.CashInHand)</span></div>
+  <div class="ca-stat ca-stat-warn"><span class="label"><i class="bi bi-journal-text" aria-hidden="true"></i> @T["Udhaar outstanding"]</span><span class="value">@Fmt.Rs(Model.Udhaar)</span></div>
+  <div class="ca-stat"><span class="label"><i class="bi bi-hourglass-split" aria-hidden="true"></i> @T["Pending jobs"]</span><span class="value">@Model.Pending</span><span class="hint">@T["Ready for pickup"]: @Model.Ready</span></div>
+</div>

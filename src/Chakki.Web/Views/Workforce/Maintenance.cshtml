@@ -1,0 +1,36 @@
+@model List<MaintenanceTask>
+@{ ViewData["Title"] = T["Maintenance"].Value; ViewData["Lead"] = T["Belts, bearings, lubrication, motor work and stone dressing (Takai). Repeating tasks reschedule themselves."].Value; var today = DateOnly.FromDateTime(DateTime.Today); }
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card">
+    @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-tools"></i>@T["No tasks yet."]</div> }
+    else
+    {
+      <div class="list-group list-group-flush">
+        @foreach (var m in Model)
+        {
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center">
+              <div><strong>@m.Title</strong> <small class="text-body-secondary">@T[m.Kind]@(m.RepeatDays != null ? " · " + T["every {0} days", m.RepeatDays].Value : "")</small></div>
+              @if (m.Status == MaintenanceStatus.Done) { <span class="ca-pill ca-pill-success">@T["Done"] @Fmt.Date(m.DoneOn!.Value) · @Fmt.Rs(m.Cost)</span> }
+              else { <span class="ca-pill @(m.DueOn < today ? "ca-pill-danger" : m.DueOn <= today.AddDays(3) ? "ca-pill-warning" : "ca-pill-info")">@T["Due"] @Fmt.Date(m.DueOn)</span> }
+            </div>
+            @if (m.Status == MaintenanceStatus.Scheduled)
+            {
+              <form asp-antiforgery="true" method="post" action="/maintenance/@m.Id/done" class="input-group input-group-sm mt-2">
+                <span class="input-group-text">₹</span><input class="form-control" name="cost" type="number" step="0.01" min="0" value="0" aria-label="@T["Cost"]"><input class="form-control" name="note" placeholder="@T["Note"]" aria-label="@T["Note"]"><button class="btn btn-outline-primary">@T["Mark done"]</button>
+              </form>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["Schedule a task"]</h2></div><div class="card-body">
+    <form asp-antiforgery="true" method="post" action="/maintenance">
+      <label class="form-label" for="mt">@T["Task"]</label><input class="form-control mb-2" id="mt" name="title" required maxlength="100">
+      <label class="form-label" for="mk">@T["Type"]</label><select class="form-select mb-2" id="mk" name="kind">@foreach (var k in new[] { "Takai", "Belt", "Bearing", "Lubrication", "Motor", "Other" }) { <option value="@k">@T[k]</option> }</select>
+      <div class="row g-2 mb-3"><div class="col-6"><label class="form-label" for="md">@T["Due on"]</label><input class="form-control" id="md" name="dueOn" type="date" value="@DateTime.Today.AddDays(7).ToString("yyyy-MM-dd")"></div><div class="col-6"><label class="form-label" for="mr">@T["Repeat every (days)"]</label><input class="form-control" id="mr" name="repeatDays" type="number" min="0" inputmode="numeric"></div></div>
+      <button class="btn btn-primary w-100">@T["Schedule"]</button>
+    </form>
+  </div></div></div>
+</div>

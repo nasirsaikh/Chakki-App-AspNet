@@ -1,0 +1,29 @@
+@model List<Purchase>
+@{ ViewData["Title"] = T["Purchases"].Value; ViewData["Lead"] = T["Buying grain and stock. Stock goes up; the supplier is owed unless paid now."].Value; var l = (Chakki.Web.Controllers.StockLists)ViewBag.Lists; }
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card">
+    @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-truck"></i>@T["No purchases yet."]</div> }
+    else
+    {
+      <div class="ca-table-wrap"><table class="table">
+        <thead><tr><th>@T["Date"]</th><th>@T["Supplier"]</th><th>@T["Item"]</th><th class="num">@T["Quantity"]</th><th class="num">@T["Rate"]</th><th class="num">@T["Amount"]</th><th>@T["Payment"]</th></tr></thead>
+        <tbody>@foreach (var p in Model) { <tr><td>@Fmt.Date(p.Date)</td><td>@p.Supplier!.Name</td><td>@Fmt.Name(p.Item)</td><td class="num">@Fmt.Qty(p.Quantity) @p.Item!.Unit</td><td class="num">@Fmt.Rs(p.Rate)</td><td class="num">@Fmt.Rs(p.Amount)</td><td>@(p.PaidNow ? T["Cash"] : T["On credit"])</td></tr> }</tbody>
+      </table></div>
+    }
+  </div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["New purchase"]</h2></div><div class="card-body">
+    @if (l.Suppliers.Count == 0) { <p>@T["Add a supplier first."] <a href="/suppliers">@T["Suppliers"]</a></p> }
+    else
+    {
+      <form asp-antiforgery="true" method="post" action="/purchases">
+        <label class="form-label" for="ps">@T["Supplier"]</label><select class="form-select mb-2" id="ps" name="supplierId">@foreach (var s in l.Suppliers) { <option value="@s.Id">@s.Name</option> }</select>
+        <label class="form-label" for="pi">@T["Item"]</label><select class="form-select mb-2" id="pi" name="itemId">@foreach (var i in l.Items) { <option value="@i.Id">@Fmt.Name(i) (@i.Unit)</option> }</select>
+        <div class="row g-2 mb-2"><div class="col-6"><label class="form-label" for="pq">@T["Quantity"]</label><input class="form-control" id="pq" name="quantity" type="number" step="0.01" min="0.01" required inputmode="decimal"></div>
+          <div class="col-6"><label class="form-label" for="pr">@T["Rate"]</label><input class="form-control" id="pr" name="rate" type="number" step="0.01" min="0" required inputmode="decimal"></div></div>
+        <label class="form-label" for="pd">@T["Date"]</label><input class="form-control mb-2" id="pd" name="date" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")">
+        <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="pp" name="paidNow" value="true"><label class="form-check-label" for="pp">@T["Paid in cash now"]</label></div>
+        <button class="btn btn-primary w-100">@T["Save purchase"]</button>
+      </form>
+    }
+  </div></div></div>
+</div>

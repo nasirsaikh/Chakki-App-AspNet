@@ -1,0 +1,38 @@
+@model List<Chakki.Web.Services.AccountBalance>
+@{ ViewData["Title"] = T["Accounts"].Value; ViewData["Lead"] = T["Double-entry books. Posted entries are never edited; corrections are made by reversal."].Value; var journals = (List<JournalEntry>)ViewBag.Journals; var hi = T.Hi(); }
+@section Actions { <a class="btn btn-outline-secondary" href="/reports/trial-balance"><i class="bi bi-list-columns" aria-hidden="true"></i> @T["Trial balance"]</a> }
+<div class="row g-3">
+  <div class="col-xl-7">
+    <div class="card mb-3"><div class="card-header"><h2 class="card-title">@T["Chart of accounts"]</h2></div>
+      <div class="ca-table-wrap"><table class="table table-hover">
+        <thead><tr><th>@T["Code"]</th><th>@T["Account"]</th><th>@T["Type"]</th><th class="num">@T["Balance"]</th></tr></thead>
+        <tbody>@foreach (var a in Model) { <tr><td>@a.Account.Code</td><td><a href="/accounts/@a.Account.Code">@Fmt.Name(a.Account.Name, a.Account.NameHi)</a></td><td>@T[a.Account.Type.ToString()]</td><td class="num">@Fmt.Rs(a.Balance)</td></tr> }</tbody>
+      </table></div>
+    </div>
+    <div class="card"><div class="card-header"><h2 class="card-title">@T["Recent journal entries"]</h2></div>
+      <div class="list-group list-group-flush">
+        @foreach (var j in journals)
+        {
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between flex-wrap gap-1"><strong>#@j.Number · @j.Memo</strong><small class="text-body-secondary">@Fmt.Date(j.Date) · @T[j.Source]@if (j.IsReversed) { <span class="ca-pill ms-1">@T["Reversed"]</span> }</small></div>
+            <table class="table table-sm mb-1 mt-1"><tbody>@foreach (var l in j.Lines) { <tr><td class="@(l.Credit > 0 ? "ps-4" : "")">@Fmt.Name(l.Account!.Name, l.Account.NameHi)</td><td class="num">@(l.Debit > 0 ? Fmt.Rs(l.Debit) : "")</td><td class="num">@(l.Credit > 0 ? Fmt.Rs(l.Credit) : "")</td></tr> }</tbody></table>
+            @if (j.Source == "manual" && !j.IsReversed && j.ReversesId == null)
+            {
+              <form asp-antiforgery="true" method="post" action="/accounts/journal/@j.Id/reverse" class="input-group input-group-sm" data-ca-confirm="@T["Reverse this entry?"]"><input class="form-control" name="reason" placeholder="@T["Reason"]" required aria-label="@T["Reason"]"><button class="btn btn-outline-danger">@T["Reverse"]</button></form>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-5"><div class="card"><div class="card-header"><h2 class="card-title">@T["Manual journal entry"]</h2></div><div class="card-body">
+    <form asp-antiforgery="true" method="post" action="/accounts/journal">
+      <label class="form-label" for="jd">@T["Date"]</label><input class="form-control mb-2" id="jd" name="date" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")">
+      <label class="form-label" for="jm">@T["What is it for?"]</label><input class="form-control mb-2" id="jm" name="memo" required maxlength="200">
+      <label class="form-label" for="jdr">@T["Debit"]</label><select class="form-select mb-2" id="jdr" name="debitCode">@foreach (var a in Model.Where(a => a.Account.Code is not (SystemAccounts.Receivable or SystemAccounts.Payable))) { <option value="@a.Account.Code">@a.Account.Code · @Fmt.Name(a.Account.Name, a.Account.NameHi)</option> }</select>
+      <label class="form-label" for="jcr">@T["Credit"]</label><select class="form-select mb-2" id="jcr" name="creditCode">@foreach (var a in Model.Where(a => a.Account.Code is not (SystemAccounts.Receivable or SystemAccounts.Payable))) { <option value="@a.Account.Code" selected="@(a.Account.Code == SystemAccounts.Cash)">@a.Account.Code · @Fmt.Name(a.Account.Name, a.Account.NameHi)</option> }</select>
+      <label class="form-label" for="ja">@T["Amount"]</label><input class="form-control mb-3" id="ja" name="amount" type="number" step="0.01" min="0.01" required inputmode="decimal">
+      <button class="btn btn-primary w-100">@T["Post entry"]</button>
+    </form>
+  </div></div></div>
+</div>

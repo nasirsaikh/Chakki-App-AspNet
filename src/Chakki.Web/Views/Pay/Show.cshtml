@@ -1,0 +1,60 @@
+@model Chakki.Web.Controllers.PayModel
+@inject IWebHostEnvironment Env
+@{
+    ViewData["Title"] = T["Pay"].Value + " " + Fmt.Rs(Model.Payment.Amount);
+    var link = $"{Context.Request.Scheme}://{Context.Request.Host}/pay/{Model.Payment.Reference}";
+    var share = Uri.EscapeDataString(T["{0}: please pay {1} for order {2}", Model.Org.Name, Fmt.Rs(Model.Payment.Amount), Model.Order.Ref].Value + " " + link);
+    var rzp = Model.Payment.Method == PaymentMethod.Card && Model.Payment.ProviderOrderId != null && Model.Payment.Status == SettlementStatus.Pending;
+}
+@section Scripts {
+  @if (rzp) { <script src="https://checkout.razorpay.com/v1/checkout.js"></script><script src="~/js/pay.js" asp-append-version="true"></script> }
+}
+<div class="row justify-content-center">
+  <div class="col-md-7 col-lg-5">
+    <div class="card">
+      <div class="card-body text-center">
+        <p class="mb-1 text-body-secondary">@Model.Org.Name</p>
+        <div class="ca-pay-amount">@Fmt.Rs(Model.Payment.Amount)</div>
+        <p class="mb-0">@T["Order"] <strong>@Model.Order.Ref</strong>@if (Model.CustomerName != null) { <span> · @Model.CustomerName</span> }</p>
+      </div>
+      <div id="pay-status">
+        <partial name="_Status" model="Model" />
+      </div>
+      @if (rzp)
+      {
+        <div class="card-body pt-0 text-center">
+          <button class="btn btn-primary btn-lg w-100" type="button" data-rzp-key="@Model.Payment.Gateway!.KeyId" data-rzp-order="@Model.Payment.ProviderOrderId" data-rzp-amount="@((long)(Model.Payment.Amount * 100))" data-rzp-name="@Model.Org.Name" data-rzp-ref="@Model.Payment.Reference" data-rzp-form="#rzp-form">
+            <i class="bi bi-credit-card" aria-hidden="true"></i> @T["Pay by card / UPI app"]
+          </button>
+          <form asp-antiforgery="true" id="rzp-form" method="post" action="/pay/@Model.Payment.Reference/razorpay" class="d-none">
+            <input type="hidden" name="razorpay_order_id"><input type="hidden" name="razorpay_payment_id"><input type="hidden" name="razorpay_signature">
+          </form>
+        </div>
+      }
+      @if (Model.IsStaff && Model.Payment.Status == SettlementStatus.Pending)
+      {
+        <div class="card-footer">
+          <div class="d-flex flex-wrap gap-2 justify-content-center mb-2">
+            <a class="btn btn-outline-success btn-sm" href="https://wa.me/?text=@share" target="_blank" rel="noopener"><i class="bi bi-whatsapp" aria-hidden="true"></i> @T["Send link on WhatsApp"]</a>
+            <a class="btn btn-outline-secondary btn-sm" href="/orders/@Model.Order.Id"><i class="bi bi-arrow-left" aria-hidden="true"></i> @T["Back to order"]</a>
+            <form asp-antiforgery="true" method="post" action="/pay/@Model.Payment.Reference/cancel"><button class="btn btn-outline-danger btn-sm">@T["Cancel QR"]</button></form>
+            @if (Env.IsDevelopment()) { <form asp-antiforgery="true" method="post" action="/pay/@Model.Payment.Reference/simulate"><button class="btn btn-outline-warning btn-sm" title="@T["Development only"]">@T["Simulate bank confirmation"]</button></form> }
+          </div>
+          @if (User.IsInRole("Owner") || User.IsInRole("Manager"))
+          {
+            <details class="small"><summary>@T["Money arrived in the bank app? Confirm with UTR"]</summary>
+              <form asp-antiforgery="true" method="post" action="/pay/@Model.Payment.Reference/confirm" class="input-group input-group-sm mt-2">
+                <input class="form-control" name="utr" placeholder="@T["UTR / transaction number"]" required minlength="6" aria-label="@T["UTR / transaction number"]">
+                <button class="btn btn-primary">@T["Confirm received"]</button>
+              </form>
+            </details>
+          }
+        </div>
+      }
+      else if (Model.IsStaff)
+      {
+        <div class="card-footer text-center"><a class="btn btn-outline-secondary btn-sm" href="/orders/@Model.Order.Id">@T["Back to order"]</a></div>
+      }
+    </div>
+  </div>
+</div>

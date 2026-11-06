@@ -1,0 +1,33 @@
+@model List<Supplier>
+@{ ViewData["Title"] = T["Suppliers"].Value; ViewData["Lead"] = T["Vendors and what you owe them."].Value; var bal = (Dictionary<int, decimal>)ViewBag.Balances; }
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card">
+    @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-shop"></i>@T["No suppliers yet."]</div> }
+    else
+    {
+      <div class="ca-table-wrap"><table class="table">
+        <thead><tr><th>@T["Name"]</th><th>@T["Phone"]</th><th>@T["Address"]</th><th class="num">@T["Payable"]</th></tr></thead>
+        <tbody>@foreach (var s in Model) { <tr><td>@s.Name</td><td>@s.Phone</td><td>@s.Address</td><td class="num fw-semibold">@Fmt.Rs(bal[s.Id])</td></tr> }</tbody>
+      </table></div>
+    }
+  </div></div>
+  <div class="col-lg-4">
+    <div class="card mb-3"><div class="card-header"><h2 class="card-title">@T["Pay a supplier"]</h2></div><div class="card-body">
+      <form asp-antiforgery="true" method="post" action="/suppliers/pay">
+        <select class="form-select mb-2" name="supplierId" aria-label="@T["Supplier"]">@foreach (var s in Model.Where(s => bal[s.Id] > 0)) { <option value="@s.Id">@s.Name — @Fmt.Rs(bal[s.Id])</option> }</select>
+        <div class="input-group mb-2"><span class="input-group-text">₹</span><input class="form-control" name="amount" type="number" step="0.01" min="0.01" required aria-label="@T["Amount"]"></div>
+        <input class="form-control mb-2" name="note" placeholder="@T["Note"]" aria-label="@T["Note"]">
+        <button class="btn btn-primary w-100">@T["Save payment"]</button>
+      </form>
+    </div></div>
+    <div class="card"><div class="card-header"><h2 class="card-title">@T["Add supplier"]</h2></div><div class="card-body">
+      <form asp-antiforgery="true" method="post" action="/suppliers/save">
+        <input type="hidden" name="id" value="0">
+        <input class="form-control mb-2" name="name" placeholder="@T["Name"]" required aria-label="@T["Name"]">
+        <input class="form-control mb-2" name="phone" placeholder="@T["Phone"]" inputmode="tel" aria-label="@T["Phone"]">
+        <input class="form-control mb-2" name="address" placeholder="@T["Address"]" aria-label="@T["Address"]">
+        <button class="btn btn-outline-primary w-100">@T["Add"]</button>
+      </form>
+    </div></div>
+  </div>
+</div>

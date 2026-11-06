@@ -1,0 +1,23 @@
+@model List<WastageLog>
+@{ ViewData["Title"] = T["Wastage"].Value; ViewData["Lead"] = T["Milling loss, dust and spoiled stock. Stock-linked wastage is costed at average cost."].Value; var l = (Chakki.Web.Controllers.StockLists)ViewBag.Lists; }
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card">
+    @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-trash3"></i>@T["No wastage logged."]</div> }
+    else
+    {
+      <div class="ca-table-wrap"><table class="table">
+        <thead><tr><th>@T["Date"]</th><th>@T["Type"]</th><th>@T["Item"]</th><th class="num">@T["Quantity"]</th><th class="num">@T["Cost"]</th><th>@T["Note"]</th></tr></thead>
+        <tbody>@foreach (var w in Model) { <tr><td>@Fmt.Date(w.Date)</td><td>@T[w.Kind]</td><td>@Fmt.Name(w.Item)</td><td class="num">@Fmt.Qty(w.Quantity)</td><td class="num">@Fmt.Rs(w.CostAmount)</td><td>@w.Note</td></tr> }</tbody>
+      </table></div>
+    }
+  </div></div>
+  <div class="col-lg-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["Log wastage"]</h2></div><div class="card-body">
+    <form asp-antiforgery="true" method="post" action="/wastage">
+      <label class="form-label" for="wk">@T["Type"]</label><select class="form-select mb-2" id="wk" name="kind">@foreach (var k in new[] { "Milling loss", "Dust", "Spoiled", "Spillage", "Other" }) { <option value="@k">@T[k]</option> }</select>
+      <label class="form-label" for="wi">@T["Item (optional)"]</label><select class="form-select mb-2" id="wi" name="itemId"><option value="">@T["Not from stock"]</option>@foreach (var i in l.Items) { <option value="@i.Id">@Fmt.Name(i)</option> }</select>
+      <label class="form-label" for="wq">@T["Quantity"]</label><input class="form-control mb-2" id="wq" name="quantity" type="number" step="0.01" min="0.01" required inputmode="decimal">
+      <label class="form-label" for="wn">@T["Note"]</label><input class="form-control mb-3" id="wn" name="note" maxlength="200">
+      <button class="btn btn-primary w-100">@T["Save"]</button>
+    </form>
+  </div></div></div>
+</div>

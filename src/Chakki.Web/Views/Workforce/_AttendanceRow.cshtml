@@ -1,0 +1,27 @@
+@model Chakki.Web.Controllers.AttendanceRow
+@{ var date = Model.Record?.Date ?? (ViewData["Date"] as DateOnly? ?? DateOnly.FromDateTime(DateTime.Today)); var id = $"att-{Model.Employee.Id}"; }
+<tr id="@id">
+  <td>@Model.Employee.Name <small class="text-body-secondary">@Model.Employee.Role</small></td>
+  <td>
+    <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="@T["Status"]">
+      @foreach (var s in Enum.GetValues<AttendanceStatus>())
+      {
+        <form asp-antiforgery="true" method="post" action="/attendance" hx-post="/attendance" hx-target="#@id" hx-swap="outerHTML" class="d-inline">
+          <input type="hidden" name="employeeId" value="@Model.Employee.Id"><input type="hidden" name="date" value="@date.ToString("yyyy-MM-dd")"><input type="hidden" name="status" value="@s">
+          <button class="btn btn-sm @(Model.Record?.Status == s ? (s == AttendanceStatus.Absent ? "btn-danger" : "btn-primary") : "btn-outline-secondary") me-1 mb-1" type="submit">@T[s.ToString()]</button>
+        </form>
+      }
+    </div>
+  </td>
+  <td>@Model.Record?.CheckIn?.ToString("HH:mm")</td>
+  <td>
+    @if (Model.Record is { Status: AttendanceStatus.Present or AttendanceStatus.HalfDay, CheckOut: null })
+    {
+      <form asp-antiforgery="true" method="post" action="/attendance" hx-post="/attendance" hx-target="#@id" hx-swap="outerHTML">
+        <input type="hidden" name="employeeId" value="@Model.Employee.Id"><input type="hidden" name="date" value="@date.ToString("yyyy-MM-dd")"><input type="hidden" name="status" value="@Model.Record.Status"><input type="hidden" name="checkOut" value="@DateTime.Now.ToString("HH:mm")">
+        <button class="btn btn-sm btn-outline-secondary">@T["Check out"]</button>
+      </form>
+    }
+    else { @Model.Record?.CheckOut?.ToString("HH:mm") }
+  </td>
+</tr>

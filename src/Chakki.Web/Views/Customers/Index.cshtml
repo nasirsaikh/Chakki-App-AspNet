@@ -1,0 +1,12 @@
+@model Chakki.Web.Controllers.CustomerListModel
+@{ ViewData["Title"] = T["Customers"].Value; ViewData["Lead"] = T["Permanent and walk-in customers with their Udhaar."].Value; }
+@section Actions { <a class="btn btn-primary" href="/customers/new"><i class="bi bi-person-plus" aria-hidden="true"></i> @T["Add customer"]</a> }
+<div class="card">
+  <div class="card-body pb-0">
+    <form class="ca-filter" method="get" hx-get="/customers" hx-target="#customer-rows" hx-trigger="input changed delay:300ms from:input, change from:select" hx-push-url="true">
+      <input class="form-control" type="search" name="q" value="@Model.Q" placeholder="@T["Name, phone or village"]" aria-label="@T["Search customers"]">
+      <select class="form-select w-auto" name="village" aria-label="@T["Village"]"><option value="">@T["All villages"]</option>@foreach (var v in Model.Villages) { <option selected="@(v == Model.Village)">@v</option> }</select>
+    </form>
+  </div>
+  <div id="customer-rows"><partial name="_Rows" model="Model" /></div>
+</div>

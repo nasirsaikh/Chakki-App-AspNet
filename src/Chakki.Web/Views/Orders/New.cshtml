@@ -1,0 +1,40 @@
+@model Chakki.Web.Controllers.OrderNewModel
+@{ ViewData["Title"] = T["New grinding order"].Value; ViewData["Lead"] = T["Weigh the grain, pick the service and save. You can bill when it is ready."].Value; var hi = T.Hi(); }
+<form asp-antiforgery="true" method="post" action="/orders/new" data-ca-order-form>
+  <div class="card mb-3">
+    <div class="card-header"><h2 class="card-title">@T["Customer"]</h2></div>
+    <div class="card-body">
+      <div class="ca-form-grid">
+        <div>
+          <label class="form-label" for="CustomerId">@T["Existing customer"]</label>
+          <select class="form-select" id="CustomerId" name="CustomerId">
+            <option value="0">@T["— New / walk-in customer —"]</option>
+            @foreach (var c in Model.Customers) { <option value="@c.Id" selected="@(c.Id == Model.CustomerId)">@c.Name@(c.Village != null ? " · " + c.Village : "")@(c.Phone != null ? " · " + c.Phone : "")</option> }
+          </select>
+        </div>
+        <div><label class="form-label" for="NewCustomerName">@T["Or new customer name"]</label><input class="form-control" id="NewCustomerName" name="NewCustomerName" autocomplete="off"></div>
+        <div><label class="form-label" for="NewCustomerPhone">@T["Phone"]</label><input class="form-control" id="NewCustomerPhone" name="NewCustomerPhone" inputmode="tel"></div>
+        <div><label class="form-label" for="NewCustomerVillage">@T["Village"]</label><input class="form-control" id="NewCustomerVillage" name="NewCustomerVillage"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center"><h2 class="card-title">@T["Grain and service"]</h2>
+      <button class="btn btn-outline-secondary btn-sm" type="button" data-ca-add-line><i class="bi bi-plus" aria-hidden="true"></i> @T["Add grain"]</button></div>
+    <div class="card-body">
+      <div class="ca-order-line" data-ca-line>
+        <div><label class="form-label">@T["Service"]</label>
+          <select class="form-select" name="Lines[0].RateCardId" required>
+            @foreach (var r in Model.Rates) { <option value="@r.Id" data-rate="@r.SystemRate.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-min="@r.MinRate.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-max="@r.MaxRate.ToString(System.Globalization.CultureInfo.InvariantCulture)">@(hi && r.ServiceHi != null ? r.ServiceHi : r.Label) — @Fmt.Rs(r.SystemRate)/kg</option> }
+          </select></div>
+        <div><label class="form-label">@T["Weight (kg)"]</label><input class="form-control" name="Lines[0].WeightKg" type="number" step="0.01" min="0.1" inputmode="decimal" required data-ca-kg></div>
+        <div><label class="form-label">@T["Rate ₹/kg"]</label><input class="form-control" name="Lines[0].AppliedRate" type="number" step="0.01" inputmode="decimal" data-ca-rate data-auto="1"></div>
+        <div class="d-none" data-ca-reason-wrap><label class="form-label">@T["Reason for rate change"]</label><input class="form-control" name="Lines[0].OverrideReason" maxlength="200" data-ca-reason></div>
+        <div><button class="btn btn-ghost btn-outline-secondary" type="button" data-ca-remove-line aria-label="@T["Remove"]"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>
+      </div>
+      <div class="mt-2"><label class="form-label" for="Notes">@T["Notes"]</label><input class="form-control" id="Notes" name="Notes" maxlength="300"></div>
+    </div>
+  </div>
+  <div class="ca-total-bar"><span>@T["Estimated bill"]</span><strong data-ca-total>₹0.00</strong></div>
+  <div class="ca-form-actions"><a class="btn btn-outline-secondary" href="/orders">@T["Cancel"]</a><button class="btn btn-primary btn-lg" type="submit"><i class="bi bi-check2" aria-hidden="true"></i> @T["Save order"]</button></div>
+</form>

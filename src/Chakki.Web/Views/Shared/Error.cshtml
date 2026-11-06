@@ -1,0 +1,5 @@
+@model int
+@{ ViewData["Title"] = Model == 404 ? T["Page not found"].Value : T["Something went wrong"].Value; }
+<div class="card"><div class="ca-empty"><i class="bi @(Model == 404 ? "bi-signpost-split" : "bi-exclamation-triangle")"></i>
+<p>@(Model == 404 ? T["This page does not exist, or it belongs to another chakki."] : Model == 429 ? T["Too many requests. Please wait a minute."] : T["Please try again. If it keeps happening, tell the owner."])</p>
+<a class="btn btn-primary" href="/">@T["Go to dashboard"]</a></div></div>

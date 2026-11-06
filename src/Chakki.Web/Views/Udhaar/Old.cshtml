@@ -1,0 +1,27 @@
+@model List<OpeningBalance>
+@{ ViewData["Title"] = T["Old Udhaar"].Value; ViewData["Lead"] = T["Balances carried in from the old register at go-live. Enter each only once."].Value; }
+<div class="row g-3">
+  <div class="col-lg-8"><div class="card">
+    @if (Model.Count == 0) { <div class="ca-empty"><i class="bi bi-journal"></i>@T["No old Udhaar entered."]</div> }
+    else
+    {
+      <div class="ca-table-wrap"><table class="table">
+        <thead><tr><th>@T["Customer"]</th><th>@T["As of"]</th><th>@T["Note"]</th><th class="num">@T["Amount"]</th><th class="num">@T["Settled"]</th><th class="num">@T["Left"]</th></tr></thead>
+        <tbody>@foreach (var o in Model) { <tr><td><a href="/customers/@o.CustomerId">@o.Customer!.Name</a></td><td>@Fmt.Date(o.AsOf)</td><td>@o.Note</td><td class="num">@Fmt.Rs(o.Amount)</td><td class="num">@Fmt.Rs(o.Settled)</td><td class="num fw-semibold">@Fmt.Rs(o.Remaining)</td></tr> }</tbody>
+      </table></div>
+    }
+  </div></div>
+  @if (User.IsInRole("Owner") || User.IsInRole("Manager") || User.IsInRole("Accountant"))
+  {
+    <div class="col-lg-4"><div class="card"><div class="card-header"><h2 class="card-title">@T["Add old Udhaar"]</h2></div><div class="card-body">
+      <form asp-antiforgery="true" method="post" action="/udhaar/opening" hx-boost="false">
+        <label class="form-label" for="oc">@T["Customer"]</label>
+        <select class="form-select mb-2" id="oc" name="customerId" required>@foreach (var c in (List<Customer>?)ViewBag.All ?? []) { <option value="@c.Id">@c.Name</option> }</select>
+        <label class="form-label" for="oa">@T["Amount"]</label><input class="form-control mb-2" id="oa" name="amount" type="number" step="0.01" min="0.01" required inputmode="decimal">
+        <label class="form-label" for="od">@T["As of"]</label><input class="form-control mb-2" id="od" name="asOf" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")">
+        <label class="form-label" for="on">@T["Note"]</label><input class="form-control mb-3" id="on" name="note" maxlength="200">
+        <button class="btn btn-primary w-100">@T["Add"]</button>
+      </form>
+    </div></div></div>
+  }
+</div>

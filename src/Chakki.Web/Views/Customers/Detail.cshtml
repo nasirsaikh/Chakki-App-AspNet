@@ -1,0 +1,55 @@
+@model Chakki.Web.Controllers.CustomerDetailModel
+@{ var c = Model.Customer; ViewData["Title"] = c.Name; ViewData["Lead"] = string.Join(" · ", new[] { c.Village, c.Phone }.Where(x => !string.IsNullOrEmpty(x))); }
+@section Actions {
+  <a class="btn btn-primary" href="/orders/new?customerId=@c.Id"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["New order"]</a>
+  <a class="btn btn-outline-secondary" href="/customers/@c.Id/edit"><i class="bi bi-pencil" aria-hidden="true"></i> @T["Edit"]</a>
+}
+<div class="ca-stats">
+  <div class="ca-stat ca-stat-warn"><span class="label">@T["Udhaar outstanding"]</span><span class="value">@Fmt.Rs(Model.Udhaar)</span></div>
+  <div class="ca-stat"><span class="label">@T["Orders"]</span><span class="value">@Model.Orders.Count</span></div>
+  <div class="ca-stat"><span class="label">@T["Old Udhaar left"]</span><span class="value">@Fmt.Rs(Model.Openings.Sum(o => o.Remaining))</span></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card mb-3">
+      <div class="card-header"><h2 class="card-title">@T["Order history"]</h2></div>
+      @if (Model.Orders.Count == 0) { <div class="ca-empty">@T["No orders yet."]</div> }
+      else
+      {
+        <div class="ca-table-wrap"><table class="table table-hover">
+          <thead><tr><th>@T["Order"]</th><th class="num">@T["Weight"]</th><th class="num">@T["Amount"]</th><th>@T["Status"]</th><th>@T["Payment"]</th></tr></thead>
+          <tbody>@foreach (var o in Model.Orders) { <tr><td><a class="ca-ref" href="/orders/@o.Id">@o.Ref</a> <small class="text-body-secondary">@Fmt.Date(o.CreatedAt)</small></td><td class="num">@Fmt.Qty(o.Lines.Sum(l => l.WeightKg)) kg</td><td class="num">@Fmt.Rs(o.Total)</td><td><partial name="_OrderStatus" model="o.Status" /></td><td><partial name="_PaymentState" model="o.PaymentState" /></td></tr> }</tbody>
+        </table></div>
+      }
+    </div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">@T["Udhaar ledger"]</h2></div>
+      @if (Model.Ledger.Count == 0) { <div class="ca-empty">@T["No Udhaar entries."]</div> }
+      else
+      {
+        <div class="ca-table-wrap"><table class="table">
+          <thead><tr><th>@T["Date"]</th><th>@T["Entry"]</th><th class="num">@T["Debit"]</th><th class="num">@T["Credit"]</th></tr></thead>
+          <tbody>@foreach (var l in Model.Ledger) { <tr><td>@Fmt.Date(l.JournalEntry!.Date)</td><td>@l.JournalEntry.Memo</td><td class="num">@(l.Debit > 0 ? Fmt.Rs(l.Debit) : "")</td><td class="num">@(l.Credit > 0 ? Fmt.Rs(l.Credit) : "")</td></tr> }</tbody>
+        </table></div>
+      }
+    </div>
+  </div>
+  <div class="col-lg-5">
+    @if (Model.Udhaar > 0)
+    {
+      <div class="card mb-3"><div class="card-header"><h2 class="card-title">@T["Receive Udhaar"]</h2></div><div class="card-body">
+        <form asp-antiforgery="true" method="post" action="/udhaar/receive">
+          <input type="hidden" name="customerId" value="@c.Id">
+          <div class="input-group"><span class="input-group-text">₹</span><input class="form-control" name="amount" type="number" step="0.01" min="0.01" max="@Model.Udhaar.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" required inputmode="decimal" aria-label="@T["Amount"]"><button class="btn btn-primary">@T["Save receipt"]</button></div>
+          <p class="form-text mb-0">@T["Old Udhaar is settled first, then the oldest unpaid orders."]</p>
+        </form>
+      </div></div>
+    }
+    @if (Model.Openings.Count > 0)
+    {
+      <div class="card"><div class="card-header"><h2 class="card-title">@T["Old Udhaar"]</h2></div>
+        <ul class="list-group list-group-flush">@foreach (var ob in Model.Openings) { <li class="list-group-item d-flex justify-content-between"><span>@Fmt.Date(ob.AsOf) <small class="text-body-secondary">@ob.Note</small></span><span>@Fmt.Rs(ob.Remaining) / @Fmt.Rs(ob.Amount)</span></li> }</ul>
+      </div>
+    }
+  </div>
+</div>

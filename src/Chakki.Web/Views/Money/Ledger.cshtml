@@ -1,0 +1,13 @@
+@model List<LedgerLine>
+@{ var a = (Account)ViewBag.Account; ViewData["Title"] = $"{a.Code} · {Fmt.Name(a.Name, a.NameHi)}"; decimal run = 0; var debitNature = a.Type is AccountType.Asset or AccountType.Expense; }
+@section Actions { <a class="btn btn-outline-secondary" href="/accounts">@T["Back"]</a> }
+<div class="card">
+  @if (Model.Count == 0) { <div class="ca-empty">@T["No entries yet."]</div> }
+  else
+  {
+    <div class="ca-table-wrap"><table class="table">
+      <thead><tr><th>@T["Date"]</th><th>#</th><th>@T["Entry"]</th><th class="num">@T["Debit"]</th><th class="num">@T["Credit"]</th><th class="num">@T["Balance"]</th></tr></thead>
+      <tbody>@foreach (var l in Model) { run += debitNature ? l.Debit - l.Credit : l.Credit - l.Debit; <tr><td>@Fmt.Date(l.JournalEntry!.Date)</td><td>@l.JournalEntry.Number</td><td>@l.JournalEntry.Memo</td><td class="num">@(l.Debit > 0 ? Fmt.Rs(l.Debit) : "")</td><td class="num">@(l.Credit > 0 ? Fmt.Rs(l.Credit) : "")</td><td class="num">@Fmt.Rs(run)</td></tr> }</tbody>
+    </table></div>
+  }
+</div>

@@ -1,0 +1,23 @@
+@model Chakki.Web.Controllers.RegisterInput
+@{ ViewData["Title"] = ""; }
+<div class="ca-auth ca-auth-wide">
+  <div class="card">
+    <div class="card-body p-4">
+      <h1 class="h3 mb-1">@T["Register your chakki"]</h1>
+      <p class="text-body-secondary">@T["Each chakki gets its own private workspace. No other chakki can see your customers, orders or accounts."]</p>
+      <form asp-antiforgery="true" method="post" asp-action="Register">
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+        <div class="ca-form-grid">
+          <div><label class="form-label" asp-for="ChakkiName">@T["Chakki name"]</label><input class="form-control" asp-for="ChakkiName" autofocus><span class="text-danger small" asp-validation-for="ChakkiName"></span></div>
+          <div><label class="form-label" asp-for="OwnerName">@T["Owner name"]</label><input class="form-control" asp-for="OwnerName"><span class="text-danger small" asp-validation-for="OwnerName"></span></div>
+          <div><label class="form-label" asp-for="Phone">@T["Phone"]</label><input class="form-control" asp-for="Phone" inputmode="tel"></div>
+          <div><label class="form-label" asp-for="Language">@T["Language"]</label>
+            <select class="form-select" asp-for="Language"><option value="hi">हिन्दी</option><option value="en">English</option></select></div>
+          <div><label class="form-label" asp-for="Email">@T["Email"]</label><input class="form-control" asp-for="Email" autocomplete="username"><span class="text-danger small" asp-validation-for="Email"></span></div>
+          <div><label class="form-label" asp-for="Password">@T["Password"]</label><input class="form-control" asp-for="Password" autocomplete="new-password"><span class="text-danger small" asp-validation-for="Password"></span><div class="form-text">@T["At least 8 characters with a number."]</div></div>
+        </div>
+        <div class="ca-form-actions"><a class="btn btn-outline-secondary" href="/account/login">@T["I already have an account"]</a><button class="btn btn-primary" type="submit">@T["Create my chakki"]</button></div>
+      </form>
+    </div>
+  </div>
+</div>

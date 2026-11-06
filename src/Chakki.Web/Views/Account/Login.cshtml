@@ -1,0 +1,33 @@
+@model Chakki.Web.Controllers.LoginInput
+@{ ViewData["Title"] = ""; }
+<div class="ca-auth">
+  <div class="card">
+    <div class="card-body p-4">
+      <div class="text-center mb-3">
+        <span class="ca-brand-mark mx-auto mb-2" style="width:3rem;height:3rem;font-size:1.4rem" aria-hidden="true"><i class="bi bi-gear-wide-connected"></i></span>
+        <h1 class="h3 mb-1">@T["Sign in to your chakki"]</h1>
+        <p class="text-body-secondary mb-0">@T["Orders, Udhaar, payments and accounts in one place."]</p>
+      </div>
+      <form asp-antiforgery="true" method="post" asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]">
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+        <div class="mb-3">
+          <label class="form-label" asp-for="Email">@T["Email"]</label>
+          <input class="form-control" asp-for="Email" autocomplete="username" autofocus>
+          <span class="text-danger small" asp-validation-for="Email"></span>
+        </div>
+        <div class="mb-3">
+          <label class="form-label" asp-for="Password">@T["Password"]</label>
+          <input class="form-control" asp-for="Password" autocomplete="current-password">
+          <span class="text-danger small" asp-validation-for="Password"></span>
+        </div>
+        <div class="form-check mb-3">
+          <input class="form-check-input" asp-for="RememberMe">
+          <label class="form-check-label" asp-for="RememberMe">@T["Keep me signed in"]</label>
+        </div>
+        <button class="btn btn-primary w-100" type="submit">@T["Sign in"]</button>
+      </form>
+      <hr>
+      <p class="text-center mb-0">@T["New chakki?"] <a href="/account/register">@T["Register your chakki"]</a></p>
+    </div>
+  </div>
+</div>
