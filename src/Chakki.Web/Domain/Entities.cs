@@ -101,10 +101,33 @@ public class RateCard : TenantEntity
     public decimal MaxRate { get; set; }
     public DateOnly EffectiveFrom { get; set; }
     public bool IsActive { get; set; } = true;
+    /// <summary>Optional GST / VAT applied to this service. Empty means no tax.</summary>
+    public int? TaxRateId { get; set; }
+    public TaxRate? TaxRate { get; set; }
     public string Label => $"{Grain} → {Service}{(Jalan ? " (Jalan)" : "")}";
 }
 
+/// <summary>
+/// A tax the chakki charges (GST, VAT or any other). Set up in Settings → Taxes and attach it to rates and items;
+/// nothing in code assumes a particular tax. Bills snapshot the name and percent, so later changes never alter old bills.
+/// </summary>
+public class TaxRate : TenantEntity
+{
+    [Required, MaxLength(40)] public string Name { get; set; } = "";
+    public decimal Percent { get; set; }
+    /// <summary>True when the rate already includes the tax (tax is carved out of it); false when tax is added on top.</summary>
+    public bool Inclusive { get; set; }
+    /// <summary>Show the tax on the bill as two equal halves, e.g. CGST + SGST.</summary>
+    public bool SplitInHalves { get; set; }
+    [MaxLength(20)] public string? HalfLabelA { get; set; }
+    [MaxLength(20)] public string? HalfLabelB { get; set; }
+    public bool IsActive { get; set; } = true;
+    public string Label => $"{Name} {Percent:0.##}%{(Inclusive ? " (incl.)" : "")}";
+}
+
 public enum OrderStatus { Intake, Grinding, Ready, Delivered, Cancelled }
+/// <summary>Each grain / service is ground on its own; the order is Ready only when every line is Done.</summary>
+public enum LineStatus { Waiting, Grinding, Done }
 public enum PaymentState { Unbilled, Unpaid, Partial, Paid }
 
 public class GrindingOrder : TenantEntity
@@ -114,11 +137,15 @@ public class GrindingOrder : TenantEntity
     public Customer? Customer { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Intake;
     public PaymentState PaymentState { get; set; } = PaymentState.Unbilled;
+    /// <summary>What the customer pays: all lines including tax.</summary>
     public decimal Total { get; set; }
+    public decimal TaxTotal { get; set; }
     public decimal Forgiven { get; set; }
     public decimal Paid { get; set; }
     public DateTime? BilledAt { get; set; }
     public DateTime? DeliveredAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
+    [MaxLength(200)] public string? CancelReason { get; set; }
     [MaxLength(300)] public string? Notes { get; set; }
     public string CreatedById { get; set; } = "";
     public List<GrindingOrderLine> Lines { get; set; } = [];
@@ -137,7 +164,14 @@ public class GrindingOrderLine : TenantEntity
     public decimal SystemRate { get; set; }
     public decimal AppliedRate { get; set; }
     [MaxLength(200)] public string? OverrideReason { get; set; }
+    /// <summary>Taxable value of the line (income), without tax.</summary>
     public decimal Amount { get; set; }
+    public LineStatus Status { get; set; } = LineStatus.Waiting;
+    public DateTime? DoneAt { get; set; }
+    [MaxLength(40)] public string? TaxName { get; set; }
+    public decimal TaxPercent { get; set; }
+    public decimal TaxAmount { get; set; }
+    public decimal LineTotal => Amount + TaxAmount;
 }
 
 // ---------------------------------------------------------------- Payments
@@ -195,6 +229,7 @@ public static class SystemAccounts
     public const string Payable = "2000";
     public const string BuybackPayable = "2100";
     public const string WagesPayable = "2200";
+    public const string TaxPayable = "2300";
     public const string OpeningEquity = "3000";
     public const string GrindingIncome = "4000";
     public const string SalesIncome = "4100";
@@ -215,6 +250,7 @@ public static class SystemAccounts
         (Payable, "Accounts Payable (Suppliers)", "सप्लायर देय", AccountType.Liability),
         (BuybackPayable, "Customer Buyback Payable", "बायबैक देय", AccountType.Liability),
         (WagesPayable, "Wages Payable", "मजदूरी देय", AccountType.Liability),
+        (TaxPayable, "Tax Payable (GST / VAT)", "कर देय (GST / VAT)", AccountType.Liability),
         (OpeningEquity, "Opening Balance Equity", "प्रारंभिक पूंजी", AccountType.Equity),
         (GrindingIncome, "Grinding Income", "पिसाई आय", AccountType.Income),
         (SalesIncome, "Retail Sales Income", "बिक्री आय", AccountType.Income),
@@ -277,6 +313,9 @@ public class InventoryItem : TenantEntity
     public decimal SalePrice { get; set; }
     public decimal BuybackRate { get; set; }
     public decimal ReorderLevel { get; set; }
+    /// <summary>Optional GST / VAT on retail sales of this item.</summary>
+    public int? TaxRateId { get; set; }
+    public TaxRate? TaxRate { get; set; }
 }
 
 public enum MovementKind { Purchase, Sale, Buyback, ProductionIn, ProductionOut, Wastage, Adjustment }
@@ -329,7 +368,11 @@ public class Sale : TenantEntity
     public InventoryItem? Item { get; set; }
     public decimal Quantity { get; set; }
     public decimal Rate { get; set; }
+    /// <summary>Taxable value; the customer pays Amount + TaxAmount.</summary>
     public decimal Amount { get; set; }
+    [MaxLength(40)] public string? TaxName { get; set; }
+    public decimal TaxPercent { get; set; }
+    public decimal TaxAmount { get; set; }
     public decimal CostAmount { get; set; }
     public bool OnUdhaar { get; set; }
     public DateOnly Date { get; set; }

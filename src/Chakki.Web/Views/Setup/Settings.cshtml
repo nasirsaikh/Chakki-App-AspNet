@@ -23,6 +23,13 @@
         @foreach (var g in gws) { <li class="list-group-item d-flex justify-content-between"><span>@g.Name <small class="text-body-secondary">@g.Provider</small></span><span class="ca-pill @(g.IsActive ? "ca-pill-success" : "")">@(g.IsActive ? (g.IsDefault ? T["Default"] : T["Active"]) : T["Off"])</span></li> }
       </ul>
     </div>
+    <div class="card mb-3"><div class="card-header d-flex justify-content-between"><h2 class="card-title">@T["Taxes (GST / VAT)"]</h2>@if (owner) { <a class="small" href="/settings/taxes">@T["Manage"]</a> }</div>
+      <ul class="list-group list-group-flush">
+        @{ var taxes = (List<TaxRate>)ViewBag.Taxes; }
+        @if (taxes.Count == 0) { <li class="list-group-item text-body-secondary">@T["No tax set up. Bills carry no tax until you add one."]</li> }
+        @foreach (var t in taxes) { <li class="list-group-item d-flex justify-content-between"><span>@t.Label</span><span class="ca-pill @(t.IsActive ? "ca-pill-success" : "")">@(t.IsActive ? T["Active"] : T["Off"])</span></li> }
+      </ul>
+    </div>
     <div class="card"><div class="card-body small">
       <p class="mb-1"><strong>@T["Your data is private to this chakki."]</strong></p>
       <p class="mb-0 text-body-secondary">@T["Customers, orders, Udhaar, stock, accounts and chat history are visible only to users of"] @Model.Name.</p>

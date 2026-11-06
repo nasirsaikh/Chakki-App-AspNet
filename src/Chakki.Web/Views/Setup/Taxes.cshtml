@@ -1,0 +1,61 @@
+@model List<TaxRate>
+@{
+    ViewData["Title"] = T["Taxes (GST / VAT)"].Value;
+    ViewData["Lead"] = T["Add any tax your chakki must charge and attach it to rates or items. Old bills keep the tax they were made with."].Value;
+    var e = ViewBag.Edit as TaxRate;
+    var usage = (Dictionary<int, int>)ViewBag.Usage;
+}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card">
+      @if (Model.Count == 0)
+      {
+        <div class="ca-empty"><i class="bi bi-percent" aria-hidden="true"></i>@T["No tax yet. Bills carry no tax until you add one here and attach it to a rate or item."]</div>
+      }
+      else
+      {
+        <div class="ca-table-wrap"><table class="table table-hover">
+          <thead><tr><th>@T["Name"]</th><th class="num">@T["Percent"]</th><th>@T["Price"]</th><th>@T["On bill"]</th><th class="num">@T["Used by"]</th><th>@T["Status"]</th></tr></thead>
+          <tbody>
+          @foreach (var t in Model)
+          {
+            <tr>
+              <td><a href="/settings/taxes?id=@t.Id">@t.Name</a></td>
+              <td class="num">@t.Percent.ToString("0.###")%</td>
+              <td>@(t.Inclusive ? T["Included in rate"] : T["Added on top"])</td>
+              <td>@(t.SplitInHalves ? $"{t.HalfLabelA} + {t.HalfLabelB}" : t.Name)</td>
+              <td class="num">@usage.GetValueOrDefault(t.Id)</td>
+              <td><span class="ca-pill @(t.IsActive ? "ca-pill-success" : "")">@(t.IsActive ? T["Active"] : T["Off"])</span></td>
+            </tr>
+          }
+          </tbody>
+        </table></div>
+      }
+    </div>
+    <div class="card mt-3"><div class="card-body small text-body-secondary">
+      <p class="mb-1"><strong>@T["Examples"]</strong></p>
+      <p class="mb-1">@T["GST 5% on grinding, shown as CGST 2.5% + SGST 2.5%: name GST, percent 5, tick \"Show as two halves\"."]</p>
+      <p class="mb-0">@T["Tax collected is posted to the account Tax Payable (GST / VAT), so you can see what to pay the government."]</p>
+    </div></div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card"><div class="card-header"><h2 class="card-title">@(e == null ? T["Add a tax"] : T["Change tax"])</h2></div><div class="card-body">
+      <form asp-antiforgery="true" method="post" action="/settings/taxes">
+        <input type="hidden" name="id" value="@(e?.Id ?? 0)">
+        <div class="row g-2 mb-2">
+          <div class="col-7"><label class="form-label" for="tn">@T["Name"]</label><input class="form-control" id="tn" name="name" value="@e?.Name" required maxlength="40" placeholder="GST"></div>
+          <div class="col-5"><label class="form-label" for="tp">@T["Percent"]</label><div class="input-group"><input class="form-control" id="tp" name="percent" type="number" step="0.001" min="0" max="100" value="@(e?.Percent.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "5")" required inputmode="decimal"><span class="input-group-text">%</span></div></div>
+        </div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="ti" name="inclusive" value="true" checked="@(e?.Inclusive == true)"><label class="form-check-label" for="ti">@T["Rates already include this tax"]</label></div>
+        <div class="form-text mb-2">@T["Unticked: tax is added on top of the rate. Ticked: the rate stays the same and the tax is taken out of it."]</div>
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="ts" name="splitInHalves" value="true" checked="@(e?.SplitInHalves == true)"><label class="form-check-label" for="ts">@T["Show as two halves on the bill"]</label></div>
+        <div class="row g-2 mb-2 mt-0">
+          <div class="col-6"><input class="form-control form-control-sm" name="halfLabelA" value="@(e?.HalfLabelA ?? "CGST")" maxlength="20" aria-label="@T["First half"]"></div>
+          <div class="col-6"><input class="form-control form-control-sm" name="halfLabelB" value="@(e?.HalfLabelB ?? "SGST")" maxlength="20" aria-label="@T["Second half"]"></div>
+        </div>
+        <div class="form-check mb-3"><input class="form-check-input" type="checkbox" id="ta" name="isActive" value="true" checked="@(e?.IsActive ?? true)"><label class="form-check-label" for="ta">@T["Active"]</label></div>
+        <div class="d-flex gap-2"><button class="btn btn-primary flex-grow-1">@T["Save tax"]</button>@if (e != null) { <a class="btn btn-outline-secondary" href="/settings/taxes">@T["New"]</a> }</div>
+      </form>
+    </div></div>
+  </div>
+</div>

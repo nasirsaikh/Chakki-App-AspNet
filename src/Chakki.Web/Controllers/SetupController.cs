@@ -18,10 +18,14 @@ public class SetupController(AppDbContext db, UserManager<AppUser> users, Secret
 
     // ---------------------------------------------------------------- Rate card
     [HttpGet("/rates")]
-    public async Task<IActionResult> Rates() => View(await db.RateCards.OrderByDescending(r => r.IsActive).ThenBy(r => r.Grain).ThenBy(r => r.Jalan).ToListAsync());
+    public async Task<IActionResult> Rates()
+    {
+        ViewBag.Taxes = await db.TaxRates.Where(t => t.IsActive).OrderBy(t => t.Name).ToListAsync();
+        return View(await db.RateCards.Include(r => r.TaxRate).OrderByDescending(r => r.IsActive).ThenBy(r => r.Grain).ThenBy(r => r.Jalan).ToListAsync());
+    }
 
     [Authorize(Policy = Roles.People), HttpPost("/rates/save"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveRate(int id, string grain, string service, string? serviceHi, bool jalan, decimal systemRate, decimal minRate, decimal maxRate, bool allowOverride, bool isActive = true)
+    public async Task<IActionResult> SaveRate(int id, string grain, string service, string? serviceHi, bool jalan, decimal systemRate, decimal minRate, decimal maxRate, bool allowOverride, bool isActive = true, int? taxRateId = null)
     {
         if (string.IsNullOrWhiteSpace(grain) || string.IsNullOrWhiteSpace(service)) throw new BusinessRuleException("Grain and service are required.");
         if (systemRate <= 0) throw new BusinessRuleException("Rate must be more than zero.");
@@ -32,6 +36,7 @@ public class SetupController(AppDbContext db, UserManager<AppUser> users, Secret
         if (id != 0 && r.SystemRate != systemRate) r.EffectiveFrom = Today; // old orders keep their snapshot
         r.Grain = grain.Trim(); r.Service = service.Trim(); r.ServiceHi = serviceHi?.Trim(); r.Jalan = jalan; r.SystemRate = systemRate;
         r.AllowOverride = allowOverride; r.MinRate = allowOverride ? minRate : systemRate; r.MaxRate = allowOverride ? maxRate : systemRate; r.IsActive = isActive;
+        r.TaxRateId = taxRateId is > 0 ? taxRateId : null;
         await db.SaveChangesAsync();
         Flash(T["Rate saved."]);
         return Redirect("/rates");
@@ -42,6 +47,7 @@ public class SetupController(AppDbContext db, UserManager<AppUser> users, Secret
     public async Task<IActionResult> Settings()
     {
         ViewBag.Gateways = await db.PaymentGateways.OrderByDescending(g => g.IsDefault).ToListAsync();
+        ViewBag.Taxes = await db.TaxRates.OrderByDescending(t => t.IsActive).ThenBy(t => t.Name).ToListAsync();
         return View(await db.Organizations.SingleAsync(o => o.Id == OrgId));
     }
 
@@ -55,6 +61,35 @@ public class SetupController(AppDbContext db, UserManager<AppUser> users, Secret
         await db.SaveChangesAsync();
         Flash(T["Settings saved. Sign out and in again to see the new name everywhere."]);
         return Redirect("/settings");
+    }
+
+    // ---------------------------------------------------------------- Taxes (GST / VAT / any other): data, not code
+    [Authorize(Policy = Roles.Admin), HttpGet("/settings/taxes")]
+    public async Task<IActionResult> Taxes(int? id)
+    {
+        ViewBag.Edit = id is > 0 ? await db.TaxRates.FindAsync(id) : null;
+        ViewBag.Usage = (await db.RateCards.Where(r => r.TaxRateId != null).Select(r => r.TaxRateId!.Value).ToListAsync())
+            .Concat(await db.InventoryItems.Where(i => i.TaxRateId != null).Select(i => i.TaxRateId!.Value).ToListAsync())
+            .GroupBy(x => x).ToDictionary(g => g.Key, g => g.Count());
+        return View(await db.TaxRates.OrderByDescending(t => t.IsActive).ThenBy(t => t.Name).ToListAsync());
+    }
+
+    /// <summary>Old bills keep the tax they were made with; a change here applies to new bills only.</summary>
+    [Authorize(Policy = Roles.Admin), HttpPost("/settings/taxes"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveTax(int id, string name, decimal percent, bool inclusive, bool splitInHalves, string? halfLabelA, string? halfLabelB, bool isActive)
+    {
+        if (string.IsNullOrWhiteSpace(name)) throw new BusinessRuleException("Name is required.");
+        if (percent < 0 || percent > 100) throw new BusinessRuleException("Percent must be between 0 and 100.");
+        TaxRate t;
+        if (id == 0) { t = new TaxRate(); db.TaxRates.Add(t); }
+        else t = await db.TaxRates.FindAsync(id) ?? throw new KeyNotFoundException();
+        t.Name = name.Trim(); t.Percent = Math.Round(percent, 3); t.Inclusive = inclusive; t.IsActive = isActive;
+        t.SplitInHalves = splitInHalves;
+        t.HalfLabelA = splitInHalves ? (string.IsNullOrWhiteSpace(halfLabelA) ? "CGST" : halfLabelA.Trim()) : null;
+        t.HalfLabelB = splitInHalves ? (string.IsNullOrWhiteSpace(halfLabelB) ? "SGST" : halfLabelB.Trim()) : null;
+        await db.SaveChangesAsync();
+        Flash(T["Tax saved. Attach it to rates in the Rate card and to items in Inventory."]);
+        return Redirect("/settings/taxes");
     }
 
     [Authorize(Policy = Roles.Admin), HttpGet("/settings/payments")]

@@ -20,7 +20,7 @@ public class OrderForm
 
 public record OrderListModel(List<GrindingOrder> Orders, string? Q, string? Status);
 public record OrderNewModel(List<Customer> Customers, List<RateCard> Rates, int? CustomerId);
-public record OrderDetailModel(GrindingOrder Order, List<RateCard> Rates, List<PaymentGateway> Gateways);
+public record OrderDetailModel(GrindingOrder Order, List<RateCard> Rates, List<PaymentGateway> Gateways, List<InventoryItem> BuybackItems, List<Buyback> Buybacks);
 
 [Route("orders")]
 public class OrdersController(AppDbContext db, OrderService orders, PaymentService payments) : AppController
@@ -51,7 +51,7 @@ public class OrdersController(AppDbContext db, OrderService orders, PaymentServi
     [Authorize(Policy = Roles.Floor), HttpGet("new")]
     public async Task<IActionResult> New(int? customerId) =>
         View(new OrderNewModel(await db.Customers.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync(),
-            await db.RateCards.Where(r => r.IsActive).OrderBy(r => r.Id).ToListAsync(), customerId));
+            await db.RateCards.Include(r => r.TaxRate).Where(r => r.IsActive).OrderBy(r => r.Id).ToListAsync(), customerId));
 
     [Authorize(Policy = Roles.Floor), HttpPost("new"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(OrderForm form)
@@ -74,7 +74,50 @@ public class OrdersController(AppDbContext db, OrderService orders, PaymentServi
     public async Task<IActionResult> Detail(int id)
     {
         var order = await LoadAsync(id);
-        return View(new OrderDetailModel(order, await db.RateCards.ToListAsync(), await payments.ActiveGatewaysAsync()));
+        return View(new OrderDetailModel(order, await db.RateCards.ToListAsync(), await payments.ActiveGatewaysAsync(),
+            await db.InventoryItems.Where(i => i.BuybackRate > 0).OrderByDescending(i => i.BuybackRate).ThenBy(i => i.Name).ToListAsync(),
+            await db.Buybacks.Include(b => b.Item).Where(b => b.GrindingOrderId == id).OrderBy(b => b.Id).ToListAsync()));
+    }
+
+    /// <summary>Marks one grain / service as started or done; the order status follows its lines.</summary>
+    [Authorize(Policy = Roles.Floor), HttpPost("{id:int}/lines/{lineId:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Line(int id, int lineId, LineStatus to)
+    {
+        var order = await LoadAsync(id);
+        await orders.SetLineStatusAsync(order, lineId, to, UserId);
+        return Redirect($"/orders/{id}");
+    }
+
+    /// <summary>Undo the last step (hand-over, ready, grinding) when it was marked by mistake.</summary>
+    [Authorize(Policy = Roles.Floor), HttpPost("{id:int}/back"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Back(int id, string reason)
+    {
+        var order = await LoadAsync(id);
+        await orders.StepBackAsync(order, reason, UserId);
+        Flash(T["Moved back one step."]);
+        return Redirect($"/orders/{id}");
+    }
+
+    /// <summary>Remove a bill made by mistake (only while nothing is paid). Owner or manager.</summary>
+    [Authorize(Policy = Roles.People), HttpPost("{id:int}/unbill"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Unbill(int id, string reason)
+    {
+        var order = await LoadAsync(id);
+        await orders.UnbillAsync(order, reason, UserId);
+        Flash(T["Bill removed. You can change the order and bill it again."]);
+        return Redirect($"/orders/{id}");
+    }
+
+    /// <summary>Customer left / duplicate / wrong entry. A billed order needs an owner or manager.</summary>
+    [Authorize(Policy = Roles.Floor), HttpPost("{id:int}/cancel"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Cancel(int id, string reason)
+    {
+        var order = await LoadAsync(id);
+        if (order.BilledAt != null && !(User.IsInRole(Roles.Owner) || User.IsInRole(Roles.Manager)))
+            throw new BusinessRuleException("This order is billed. Ask the owner or manager to cancel it.");
+        await orders.CancelAsync(order, reason, UserId);
+        Flash(T["Order cancelled."]);
+        return Redirect($"/orders/{id}");
     }
 
     [Authorize(Policy = Roles.Floor), HttpPost("{id:int}/status"), ValidateAntiForgeryToken]

@@ -16,6 +16,14 @@ public class DemoSeeder(AppDbContext db, RoleManager<IdentityRole> roles, UserMa
         foreach (var role in Roles.TenantRoles.Append(Roles.PlatformAdmin))
             if (!await roles.RoleExistsAsync(role)) await roles.CreateAsync(new IdentityRole(role));
 
+        // New system accounts (e.g. Tax Payable) reach chakkis that signed up before they existed.
+        foreach (var orgId in await db.Organizations.Select(o => o.Id).ToListAsync())
+        {
+            using var _ = db.Tenant.Use(orgId);
+            await LedgerService.SeedAccountsAsync(db, orgId);
+            await db.SaveChangesAsync();
+        }
+
         var adminEmail = config["Seed:PlatformAdminEmail"];
         var adminPassword = config["Seed:PlatformAdminPassword"];
         if (!string.IsNullOrWhiteSpace(adminEmail) && !string.IsNullOrWhiteSpace(adminPassword) && await users.FindByEmailAsync(adminEmail) == null)

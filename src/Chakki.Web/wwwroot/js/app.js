@@ -68,8 +68,11 @@
   });
 
   // ---------------------------------------------------------------- Grinding order form: live totals and override reason
+  const rs = (v) => (v < 0 ? "−₹" : "₹") + Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const round2 = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
   const recalc = (form) => {
-    let total = 0;
+    let total = 0, taxTotal = 0;
+    const review = [];
     form.querySelectorAll("[data-ca-line]").forEach((line) => {
       const sel = line.querySelector("select");
       const opt = sel?.selectedOptions[0];
@@ -87,10 +90,31 @@
         reason.closest("[data-ca-reason-wrap]")?.classList.toggle("d-none", !changed);
         reason.required = !!changed;
       }
-      total += kg * rate;
+      // Same arithmetic as the server (Taxes.Split): exclusive tax on top, inclusive tax carved out.
+      const priced = round2(kg * rate);
+      const pct = parseFloat(opt?.dataset.tax || "0");
+      const incl = opt?.dataset.taxIncl === "1";
+      const tax = pct > 0 ? (incl ? round2(priced * pct / (100 + pct)) : round2(priced * pct / 100)) : 0;
+      const lineTotal = incl ? priced : priced + tax;
+      total += lineTotal; taxTotal += tax;
+      const amountEl = line.querySelector("[data-ca-line-amount]");
+      if (amountEl) amountEl.textContent = rs(lineTotal);
+      const taxEl = line.querySelector("[data-ca-line-tax]");
+      if (taxEl) taxEl.textContent = tax > 0 ? `${kg || 0} kg × ${rs(rate)} · ${opt.dataset.taxName} ${pct}% ${rs(tax)}${incl ? " incl." : ""}` : (kg && rate ? `${kg} kg × ${rs(rate)}` : "");
+      if (kg > 0) review.push([opt?.textContent.split(" — ")[0] || "", kg, rate, lineTotal]);
     });
     const out = form.querySelector("[data-ca-total]");
-    if (out) out.textContent = "₹" + total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (out) out.textContent = rs(total);
+    const taxOut = form.querySelector("[data-ca-total-tax]");
+    if (taxOut) taxOut.textContent = taxTotal > 0 ? `${document.documentElement.lang.startsWith("hi") ? "कर सहित" : "incl. tax"} ${rs(taxTotal)}` : "";
+    const body = form.querySelector("[data-ca-review-lines]");
+    if (body) {
+      body.replaceChildren(...review.map(([name, kg, rate, amt]) => {
+        const tr = document.createElement("tr");
+        [name, `${kg} kg`, rs(rate), rs(amt)].forEach((v, i) => { const td = document.createElement("td"); td.textContent = v; if (i) td.className = "num"; tr.appendChild(td); });
+        return tr;
+      }));
+    }
   };
   document.addEventListener("input", (e) => {
     const form = e.target.closest("[data-ca-order-form]");
@@ -312,3 +336,106 @@
     }, 0);
   }, true);
 })();
+
+// ==================================================================== New order wizard, customer fields, buyback preview
+(() => {
+  "use strict";
+  const rs = (v) => (v < 0 ? "−₹" : "₹") + Math.abs(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // ---------------------------------------------------------------- Existing customer chosen: hide the new-customer fields
+  const syncCustomer = (form) => {
+    const sel = form.querySelector("[data-ca-customer]");
+    if (!sel) return;
+    const existing = sel.value && sel.value !== "0";
+    form.querySelectorAll("[data-ca-new-customer]").forEach((el) => {
+      el.classList.toggle("d-none", existing);
+      if (existing) el.querySelectorAll("input").forEach((i) => (i.value = ""));
+    });
+  };
+  document.addEventListener("change", (e) => {
+    if (e.target.matches("[data-ca-customer]")) syncCustomer(e.target.form);
+  });
+  document.querySelectorAll("[data-ca-customer]").forEach((s) => syncCustomer(s.form));
+
+  // ---------------------------------------------------------------- Step-by-step wizard
+  document.querySelectorAll("[data-ca-wizard]").forEach((form) => {
+    const steps = [...form.querySelectorAll("[data-ca-step]")];
+    const tabs = [...form.querySelectorAll("[data-ca-step-tab]")];
+    const back = form.querySelector("[data-ca-wizard-back]");
+    const next = form.querySelector("[data-ca-wizard-next]");
+    const submit = form.querySelector("[data-ca-wizard-submit]");
+    const cancel = form.querySelector("[data-ca-wizard-cancel]");
+    let current = 0;
+
+    const valid = (i) => {
+      const step = steps[i];
+      if (i === 0) {
+        const sel = form.querySelector("[data-ca-customer]");
+        const name = form.querySelector("#NewCustomerName");
+        const ok = (sel && sel.value !== "0") || (name && name.value.trim().length > 0);
+        form.querySelector("[data-ca-customer-error]")?.classList.toggle("d-none", ok);
+        if (!ok) name?.focus();
+        return ok;
+      }
+      for (const el of step.querySelectorAll("input, select, textarea")) {
+        if (el.closest(".d-none") || el.closest(".ts-wrapper")) continue;
+        if (!el.checkValidity()) { el.reportValidity(); return false; }
+      }
+      return true;
+    };
+    const show = (i) => {
+      current = i;
+      steps.forEach((s, n) => s.classList.toggle("d-none", n !== i));
+      tabs.forEach((t, n) => { t.classList.toggle("current", n === i); t.classList.toggle("done", n < i); t.setAttribute("aria-current", n === i ? "step" : "false"); });
+      back.classList.toggle("d-none", i === 0);
+      cancel.classList.toggle("d-none", i !== 0);
+      next.classList.toggle("d-none", i === steps.length - 1);
+      submit.classList.toggle("d-none", i !== steps.length - 1);
+      if (i === steps.length - 1) {
+        const sel = form.querySelector("[data-ca-customer]");
+        const name = form.querySelector("#NewCustomerName")?.value.trim();
+        const out = form.querySelector("[data-ca-review-customer]");
+        if (out) out.textContent = sel && sel.value !== "0" ? sel.selectedOptions[0].textContent : `${name} (${document.documentElement.lang.startsWith("hi") ? "नया" : "new"})`;
+      }
+      form.scrollIntoView({ block: "start", behavior: "smooth" });
+      const first = steps[i].querySelector(".ts-control, input:not([type=hidden]), select");
+      if (first && i > 0) setTimeout(() => first.focus?.(), 50);
+    };
+    next.addEventListener("click", () => { if (valid(current)) show(current + 1); });
+    back.addEventListener("click", () => show(current - 1));
+    tabs.forEach((t, n) => t.addEventListener("click", () => { if (n < current || (n === current + 1 && valid(current))) show(n); }));
+    form.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && current < steps.length - 1 && e.target.matches("input")) { e.preventDefault(); next.click(); }
+    });
+    form.addEventListener("submit", (e) => {
+      for (let i = 0; i < steps.length; i++) if (!valid(i)) { e.preventDefault(); show(i); valid(i); return; }
+    });
+  });
+
+  // ---------------------------------------------------------------- Buyback against a bill: live split
+  const bbCalc = (form) => {
+    const outstanding = parseFloat(form.dataset.outstanding || "0");
+    const sel = form.querySelector("select[name=itemId]");
+    const sys = parseFloat(sel?.selectedOptions[0]?.dataset.rate || "0");
+    const rateEl = form.querySelector("[data-ca-bb-rate]");
+    if (rateEl && !rateEl.value && document.activeElement !== rateEl) rateEl.placeholder = sys.toFixed(2);
+    const rate = rateEl?.value ? parseFloat(rateEl.value) : sys;
+    form.querySelector("[data-ca-bb-reason-wrap]")?.classList.toggle("d-none", !rateEl?.value || Math.abs(rate - sys) < 0.0001);
+    const qty = parseFloat(form.querySelector("[data-ca-bb-qty]")?.value || "0");
+    const value = Math.round(qty * rate * 100) / 100;
+    const fee = Math.min(outstanding, value);
+    const set = (k, v) => { const el = form.querySelector(`[data-ca-bb-${k}]`); if (el) el.textContent = rs(v); };
+    set("value", value); set("fee", fee); set("due", outstanding - fee); set("cash", value - fee);
+  };
+  document.addEventListener("input", (e) => { const f = e.target.closest("[data-ca-buyback]"); if (f) bbCalc(f); });
+  document.addEventListener("change", (e) => { const f = e.target.closest("[data-ca-buyback]"); if (f) bbCalc(f); });
+  document.querySelectorAll("[data-ca-buyback]").forEach(bbCalc);
+})();
+
+// Quick-reason chips fill a text box (e.g. "Customer left").
+document.addEventListener("click", (e) => {
+  const chip = e.target.closest("[data-ca-fill]");
+  if (!chip) return;
+  const input = document.querySelector(chip.dataset.caFill);
+  if (input) { input.value = chip.dataset.value || chip.textContent.trim(); input.focus(); }
+});

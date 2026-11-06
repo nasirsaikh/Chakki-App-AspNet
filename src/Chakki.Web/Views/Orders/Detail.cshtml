@@ -7,10 +7,15 @@
     var idx = Array.IndexOf(steps, o.Status);
     var floor = User.IsInRole("Owner") || User.IsInRole("Manager") || User.IsInRole("Operator");
     string inv(decimal d) => d.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+    var hasTax = o.TaxTotal > 0;
 }
 @section Actions {
   <partial name="_OrderStatus" model="o.Status" />
   <partial name="_PaymentState" model="o.PaymentState" />
+}
+@if (o.Status == OrderStatus.Cancelled)
+{
+  <div class="alert alert-secondary"><i class="bi bi-x-circle" aria-hidden="true"></i> <div><strong>@T["Cancelled"]</strong> @(o.CancelledAt is { } ca ? Fmt.Date(ca) : "")@if (!string.IsNullOrEmpty(o.CancelReason)) { <text> · @o.CancelReason</text> }</div></div>
 }
 @if (o.Status != OrderStatus.Cancelled)
 {
@@ -39,15 +44,64 @@
     <div class="card mb-3">
       <div class="card-header"><h2 class="card-title">@T["Grain and service"]</h2></div>
       <div class="ca-table-wrap">
-        <table class="table">
-          <thead><tr><th>@T["Service"]</th><th class="num">@T["Weight"]</th><th class="num">@T["System rate"]</th><th class="num">@T["Applied rate"]</th><th class="num">@T["Amount"]</th></tr></thead>
+        <table class="table" data-ca-no-filter>
+          <thead><tr><th>@T["Service"]</th><th class="num">@T["Weight"]</th><th class="num">@T["Rate"]</th><th class="num">@T["Amount"]</th>@if (hasTax) {<th class="num">@T["Tax"]</th>}<th>@T["Status"]</th></tr></thead>
           <tbody>
-          @foreach (var l in o.Lines)
+          @foreach (var l in o.Lines.OrderBy(l => l.Id))
           {
-            <tr><td>@(hi && l.RateCard?.ServiceHi != null ? l.RateCard.ServiceHi : l.RateCard?.Label)@if (l.OverrideReason != null) { <br><small class="text-body-secondary"><i class="bi bi-pencil" aria-hidden="true"></i> @l.OverrideReason</small> }</td>
-              <td class="num">@Fmt.Qty(l.WeightKg) kg</td><td class="num">@Fmt.Rs(l.SystemRate)</td><td class="num">@Fmt.Rs(l.AppliedRate)</td><td class="num">@Fmt.Rs(l.Amount)</td></tr>
+            <tr>
+              <td>@(hi && l.RateCard?.ServiceHi != null ? l.RateCard.ServiceHi : l.RateCard?.Label)@if (l.OverrideReason != null) { <br><small class="text-body-secondary"><i class="bi bi-pencil" aria-hidden="true"></i> @T["System rate"] @Fmt.Rs(l.SystemRate) · @l.OverrideReason</small> }</td>
+              <td class="num">@Fmt.Qty(l.WeightKg) kg</td>
+              <td class="num">@Fmt.Rs(l.AppliedRate)</td>
+              <td class="num fw-semibold">@Fmt.Rs(l.LineTotal)</td>
+              @if (hasTax) {<td class="num"><small>@(l.TaxAmount > 0 ? $"{l.TaxName} {l.TaxPercent:0.##}% · {Fmt.Rs(l.TaxAmount)}" : "—")</small></td>}
+              <td>
+                <div class="ca-line-status">
+                  <span class="ca-pill @(l.Status switch { LineStatus.Done => "ca-pill-success", LineStatus.Grinding => "ca-pill-primary", _ => "ca-pill-info" })">@T[l.Status switch { LineStatus.Done => "Done", LineStatus.Grinding => "Grinding", _ => "Waiting" }]</span>
+                  @if (floor && o.Status is not (OrderStatus.Delivered or OrderStatus.Cancelled))
+                  {
+                    @if (l.Status == LineStatus.Waiting)
+                    {
+                      <form asp-antiforgery="true" method="post" action="/orders/@o.Id/lines/@l.Id"><input type="hidden" name="to" value="Grinding"><button class="btn btn-sm btn-outline-primary"><i class="bi bi-play-fill" aria-hidden="true"></i> @T["Start"]</button></form>
+                      <form asp-antiforgery="true" method="post" action="/orders/@o.Id/lines/@l.Id"><input type="hidden" name="to" value="Done"><button class="btn btn-sm btn-primary"><i class="bi bi-check2" aria-hidden="true"></i> @T["Done"]</button></form>
+                    }
+                    else if (l.Status == LineStatus.Grinding)
+                    {
+                      <form asp-antiforgery="true" method="post" action="/orders/@o.Id/lines/@l.Id"><input type="hidden" name="to" value="Done"><button class="btn btn-sm btn-primary"><i class="bi bi-check2" aria-hidden="true"></i> @T["Done"]</button></form>
+                      <form asp-antiforgery="true" method="post" action="/orders/@o.Id/lines/@l.Id" data-ca-confirm="@T["Grinding not started yet?"]"><input type="hidden" name="to" value="Waiting"><button class="btn btn-sm btn-link text-body-secondary px-1" title="@T["Undo"]" aria-label="@T["Undo"]"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button></form>
+                    }
+                    else
+                    {
+                      <form asp-antiforgery="true" method="post" action="/orders/@o.Id/lines/@l.Id" data-ca-confirm="@T["Mark this as not done?"]"><input type="hidden" name="to" value="Grinding"><button class="btn btn-sm btn-link text-body-secondary px-1" title="@T["Undo"]" aria-label="@T["Undo"]"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button></form>
+                    }
+                  }
+                </div>
+              </td>
+            </tr>
           }
           </tbody>
+          <tfoot>
+            @if (hasTax)
+            {
+              <tr><td colspan="3">@T["Taxable value"]</td><td class="num">@Fmt.Rs(o.Total - o.TaxTotal)</td><td colspan="2"></td></tr>
+              @foreach (var g in o.Lines.Where(l => l.TaxAmount > 0).GroupBy(l => (l.TaxName, l.TaxPercent)))
+              {
+                var tax = g.Sum(l => l.TaxAmount);
+                var rate = Model.Rates.FirstOrDefault(r => r.Id == g.First().RateCardId)?.TaxRate;
+                if (rate is { SplitInHalves: true })
+                {
+                  var (a, b) = Chakki.Web.Services.Taxes.Halves(tax);
+                  <tr><td colspan="3">@(rate.HalfLabelA ?? "A") @((g.Key.TaxPercent / 2).ToString("0.##"))%</td><td class="num">@Fmt.Rs(a)</td><td colspan="2"></td></tr>
+                  <tr><td colspan="3">@(rate.HalfLabelB ?? "B") @((g.Key.TaxPercent / 2).ToString("0.##"))%</td><td class="num">@Fmt.Rs(b)</td><td colspan="2"></td></tr>
+                }
+                else
+                {
+                  <tr><td colspan="3">@g.Key.TaxName @g.Key.TaxPercent.ToString("0.##")%</td><td class="num">@Fmt.Rs(tax)</td><td colspan="2"></td></tr>
+                }
+              }
+            }
+            <tr class="fw-semibold"><td colspan="3">@T["Total"] · @Fmt.Qty(o.Lines.Sum(l => l.WeightKg)) kg</td><td class="num">@Fmt.Rs(o.Total)</td><td colspan="@(hasTax ? 2 : 1)"><small class="text-body-secondary">@o.Lines.Count(l => l.Status == LineStatus.Done) / @o.Lines.Count @T["done"]</small></td></tr>
+          </tfoot>
         </table>
       </div>
     </div>
@@ -81,7 +135,6 @@
           @if (o.Status == OrderStatus.Intake)
           {
             <form asp-antiforgery="true" method="post" action="/orders/@o.Id/status"><input type="hidden" name="to" value="Grinding"><button class="btn btn-primary"><i class="bi bi-play-fill" aria-hidden="true"></i> @T["Start grinding"]</button></form>
-            @if (o.BilledAt == null) { <form asp-antiforgery="true" method="post" action="/orders/@o.Id/status" data-ca-confirm="@T["Cancel this order?"]"><input type="hidden" name="to" value="Cancelled"><button class="btn btn-outline-danger">@T["Cancel order"]</button></form> }
           }
           else if (o.Status == OrderStatus.Grinding)
           {
@@ -95,6 +148,43 @@
         </div>
       </div>
 
+      <details class="card mb-3 ca-corrections">
+        <summary class="card-header"><h2 class="card-title"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> @T["Fix a mistake or cancel"]</h2></summary>
+        <div class="card-body">
+          @if (o.Status is OrderStatus.Grinding or OrderStatus.Ready or OrderStatus.Delivered)
+          {
+            var backTo = o.Status switch { OrderStatus.Delivered => "Ready", OrderStatus.Ready => "Grinding", _ => "Received" };
+            <form asp-antiforgery="true" method="post" action="/orders/@o.Id/back" class="mb-3">
+              <label class="form-label" for="back-reason">@T["Go back to \"{0}\"", T[backTo]]</label>
+              <div class="input-group"><input class="form-control" id="back-reason" name="reason" required maxlength="200" placeholder="@T["Why? e.g. marked done by mistake"]"><button class="btn btn-outline-secondary" type="submit">@T["Go back"]</button></div>
+              <div class="form-text">@T["Each grain can also be undone on its own in the list."]</div>
+            </form>
+          }
+          @if (o.BilledAt != null && o.Paid == 0 && (User.IsInRole("Owner") || User.IsInRole("Manager")))
+          {
+            <form asp-antiforgery="true" method="post" action="/orders/@o.Id/unbill" class="mb-3">
+              <label class="form-label" for="unbill-reason">@T["Remove the bill"]</label>
+              <div class="input-group"><input class="form-control" id="unbill-reason" name="reason" required maxlength="200" placeholder="@T["Why? e.g. wrong weight"]"><button class="btn btn-outline-secondary" type="submit">@T["Remove bill"]</button></div>
+              <div class="form-text">@T["The bill entry is reversed in the books (not deleted). Possible only before any money is received."]</div>
+            </form>
+          }
+          @if (o.Status != OrderStatus.Delivered && o.Paid == 0)
+          {
+            <form asp-antiforgery="true" method="post" action="/orders/@o.Id/cancel" data-ca-confirm="@T["Cancel this order?"]">
+              <label class="form-label" for="cancel-reason">@T["Cancel the order"]</label>
+              <div class="ca-chips mb-2">
+                @foreach (var r in new[] { "Customer left / went to another chakki", "Duplicate entry", "Wrong entry" }) { <button class="btn btn-sm btn-outline-secondary" type="button" data-ca-fill="#cancel-reason" data-value="@T[r]">@T[r]</button> }
+              </div>
+              <div class="input-group"><input class="form-control" id="cancel-reason" name="reason" required maxlength="200" placeholder="@T["Reason"]"><button class="btn btn-outline-danger" type="submit">@T["Cancel order"]</button></div>
+              <div class="form-text">@T["The record is kept with the reason; a bill with no money on it is reversed automatically."]</div>
+            </form>
+          }
+          else if (o.Paid > 0 && o.Status != OrderStatus.Delivered)
+          {
+            <p class="small text-body-secondary mb-0">@T["Money has been received on this order, so it cannot be cancelled here."]</p>
+          }
+        </div>
+      </details>
       @if (o.BilledAt == null)
       {
         <div class="card mb-3">
@@ -111,7 +201,46 @@
           </div>
         </div>
       }
-      else if (o.Outstanding > 0)
+      @if (o.BilledAt != null && o.Outstanding > 0 && Model.BuybackItems.Count > 0)
+      {
+        <div class="card mb-3">
+          <div class="card-header"><h2 class="card-title"><i class="bi bi-arrow-left-right" aria-hidden="true"></i> @T["Buyback against this bill"]</h2></div>
+          <div class="card-body">
+            <p class="text-body-secondary small">@T["The customer sells by-product (e.g. Khal) to you. Its value first pays this bill; anything left over is returned to the customer in cash."]</p>
+            <form asp-antiforgery="true" method="post" action="/buyback" data-ca-buyback data-outstanding="@inv(o.Outstanding)">
+              <input type="hidden" name="orderId" value="@o.Id"><input type="hidden" name="customerId" value="@o.CustomerId"><input type="hidden" name="fromOrder" value="true">
+              <div class="row g-2">
+                <div class="col-12"><label class="form-label" for="bb-item">@T["Item"]</label>
+                  <select class="form-select" id="bb-item" name="itemId" required>@foreach (var i in Model.BuybackItems) { <option value="@i.Id" data-rate="@inv(i.BuybackRate)">@Fmt.Name(i) — @Fmt.Rs(i.BuybackRate)/@i.Unit</option> }</select></div>
+                <div class="col-6"><label class="form-label" for="bb-qty">@T["Quantity"]</label><input class="form-control" id="bb-qty" name="quantity" type="number" step="0.01" min="0.01" inputmode="decimal" required data-ca-bb-qty></div>
+                <div class="col-6"><label class="form-label" for="bb-rate">@T["Rate ₹"]</label><input class="form-control" id="bb-rate" name="rate" type="number" step="0.01" min="0" inputmode="decimal" data-ca-bb-rate></div>
+                <div class="col-12 d-none" data-ca-bb-reason-wrap><label class="form-label" for="bb-reason">@T["Reason for rate change"]</label><input class="form-control" id="bb-reason" name="reason" maxlength="200"></div>
+              </div>
+              <dl class="ca-calc mt-3">
+                <div><dt>@T["Buyback value"]</dt><dd data-ca-bb-value>₹0.00</dd></div>
+                <div><dt>@T["Adjusted against bill"]</dt><dd data-ca-bb-fee>₹0.00</dd></div>
+                <div><dt>@T["Bill still due"]</dt><dd data-ca-bb-due>@Fmt.Rs(o.Outstanding)</dd></div>
+                <div class="ca-calc-total"><dt>@T["Return to customer"]</dt><dd data-ca-bb-cash>₹0.00</dd></div>
+              </dl>
+              <div class="ca-form-actions"><button class="btn btn-primary" type="submit"><i class="bi bi-check2" aria-hidden="true"></i> @T["Save buyback"]</button></div>
+            </form>
+          </div>
+        </div>
+      }
+      @if (Model.Buybacks.Count > 0)
+      {
+        <div class="card mb-3">
+          <div class="card-header"><h2 class="card-title">@T["Buyback"]</h2></div>
+          <ul class="list-group list-group-flush">
+            @foreach (var b in Model.Buybacks)
+            {
+              <li class="list-group-item d-flex justify-content-between gap-2"><span>@Fmt.Qty(b.Quantity) @b.Item?.Unit @Fmt.Name(b.Item) × @Fmt.Rs(b.AppliedRate) = <strong>@Fmt.Rs(b.Value)</strong></span>
+                <small class="text-end">@T["Adjusted"] @Fmt.Rs(b.FeeAdjusted)<br>@T["Returned"] @Fmt.Rs(b.CashPaid)</small></li>
+            }
+          </ul>
+        </div>
+      }
+      @if (o.BilledAt != null && o.Outstanding > 0)
       {
         <div class="card mb-3">
           <div class="card-header"><h2 class="card-title">@T["Take payment"] · @Fmt.Rs(o.Outstanding)</h2></div>

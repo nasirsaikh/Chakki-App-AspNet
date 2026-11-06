@@ -65,19 +65,23 @@ public class OperationsService(AppDbContext db, LedgerService ledger)
     public async Task SellAsync(int itemId, decimal qty, decimal? rate, int? customerId, bool onUdhaar, string userId)
     {
         if (qty <= 0) throw new BusinessRuleException("Quantity must be positive.");
-        var item = await ItemAsync(itemId);
+        var item = await db.InventoryItems.Include(i => i.TaxRate).FirstOrDefaultAsync(i => i.Id == itemId) ?? throw new BusinessRuleException("Item not found.");
         Customer? customer = null;
         if (customerId != null) customer = await db.Customers.FindAsync(customerId) ?? throw new BusinessRuleException("Customer not found.");
         if (onUdhaar && customer == null) throw new BusinessRuleException("Choose the customer for an Udhaar sale.");
         var price = rate ?? item.SalePrice;
-        var amount = Money(qty * price);
+        var tax = item.TaxRate is { IsActive: true } t ? t : null;
+        var (amount, taxAmount) = Taxes.Split(Money(qty * price), tax);
+        var gross = amount + taxAmount;
         var cost = Money(qty * item.AvgCost);
         Move(item, MovementKind.Sale, -qty, item.AvgCost, customer?.Name, Today);
-        db.Sales.Add(new Sale { ItemId = item.Id, CustomerId = customer?.Id, Quantity = qty, Rate = price, Amount = amount, CostAmount = cost, OnUdhaar = onUdhaar, Date = Today });
+        db.Sales.Add(new Sale { ItemId = item.Id, CustomerId = customer?.Id, Quantity = qty, Rate = price, Amount = amount, TaxAmount = taxAmount,
+            TaxName = tax?.Name, TaxPercent = tax?.Percent ?? 0, CostAmount = cost, OnUdhaar = onUdhaar, Date = Today });
         List<PostLine> lines =
         [
-            onUdhaar ? new(SystemAccounts.Receivable, amount, 0, customer!.Id) : new(SystemAccounts.Cash, amount, 0),
+            onUdhaar ? new(SystemAccounts.Receivable, gross, 0, customer!.Id) : new(SystemAccounts.Cash, gross, 0),
             new(SystemAccounts.SalesIncome, 0, amount),
+            new(SystemAccounts.TaxPayable, 0, taxAmount),
         ];
         if (cost > 0) lines.AddRange([new(SystemAccounts.Cogs, cost, 0), new(SystemAccounts.Inventory, 0, cost)]);
         await ledger.PostAsync(Today, $"Sale of {qty:0.##} {item.Unit} {item.Name}", "sale", null, lines, userId);

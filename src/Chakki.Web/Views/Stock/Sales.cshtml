@@ -7,7 +7,7 @@
     {
       <div class="ca-table-wrap"><table class="table">
         <thead><tr><th>@T["Date"]</th><th>@T["Item"]</th><th>@T["Customer"]</th><th class="num">@T["Quantity"]</th><th class="num">@T["Amount"]</th><th class="num">@T["Margin"]</th><th>@T["Payment"]</th></tr></thead>
-        <tbody>@foreach (var s in Model) { <tr><td>@Fmt.Date(s.Date)</td><td>@Fmt.Name(s.Item)</td><td>@s.Customer?.Name</td><td class="num">@Fmt.Qty(s.Quantity) @s.Item!.Unit</td><td class="num">@Fmt.Rs(s.Amount)</td><td class="num">@Fmt.Rs(s.Amount - s.CostAmount)</td><td>@(s.OnUdhaar ? T["Udhaar"] : T["Cash"])</td></tr> }</tbody>
+        <tbody>@foreach (var s in Model) { <tr><td>@Fmt.Date(s.Date)</td><td>@Fmt.Name(s.Item)</td><td>@s.Customer?.Name</td><td class="num">@Fmt.Qty(s.Quantity) @s.Item!.Unit</td><td class="num">@Fmt.Rs(s.Amount + s.TaxAmount)@if (s.TaxAmount > 0) {<br><small class="text-body-secondary">@s.TaxName @Fmt.Rs(s.TaxAmount)</small>}</td><td class="num">@Fmt.Rs(s.Amount - s.CostAmount)</td><td>@(s.OnUdhaar ? T["Udhaar"] : T["Cash"])</td></tr> }</tbody>
       </table></div>
     }
   </div></div>

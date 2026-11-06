@@ -24,6 +24,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options, ITenantContext
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<OpeningBalance> OpeningBalances => Set<OpeningBalance>();
     public DbSet<RateCard> RateCards => Set<RateCard>();
+    public DbSet<TaxRate> TaxRates => Set<TaxRate>();
     public DbSet<GrindingOrder> GrindingOrders => Set<GrindingOrder>();
     public DbSet<GrindingOrderLine> GrindingOrderLines => Set<GrindingOrderLine>();
     public DbSet<PaymentGateway> PaymentGateways => Set<PaymentGateway>();

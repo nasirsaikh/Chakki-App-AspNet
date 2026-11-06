@@ -441,6 +441,13 @@ namespace Chakki.Web.Data.Migrations
                     b.Property<DateTime?>("BilledAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -476,6 +483,9 @@ namespace Chakki.Web.Data.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal>("TaxTotal")
+                        .HasColumnType("TEXT");
+
                     b.Property<decimal>("Total")
                         .HasColumnType("TEXT");
 
@@ -506,6 +516,9 @@ namespace Chakki.Web.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DoneAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("GrindingOrderId")
                         .HasColumnType("INTEGER");
 
@@ -519,7 +532,20 @@ namespace Chakki.Web.Data.Migrations
                     b.Property<int>("RateCardId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
                     b.Property<decimal>("SystemRate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TaxName")
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TaxPercent")
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("WeightKg")
@@ -575,6 +601,9 @@ namespace Chakki.Web.Data.Migrations
                     b.Property<decimal>("SalePrice")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("TaxRateId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Unit")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -583,6 +612,8 @@ namespace Chakki.Web.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OrganizationId");
+
+                    b.HasIndex("TaxRateId");
 
                     b.ToTable("InventoryItems");
                 });
@@ -1139,9 +1170,14 @@ namespace Chakki.Web.Data.Migrations
                     b.Property<decimal>("SystemRate")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("TaxRateId")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OrganizationId");
+
+                    b.HasIndex("TaxRateId");
 
                     b.ToTable("RateCards");
                 });
@@ -1180,6 +1216,16 @@ namespace Chakki.Web.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("Rate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TaxName")
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TaxPercent")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -1297,6 +1343,50 @@ namespace Chakki.Web.Data.Migrations
                     b.HasIndex("SupplierId");
 
                     b.ToTable("SupplierPayments");
+                });
+
+            modelBuilder.Entity("Chakki.Web.Domain.TaxRate", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HalfLabelA")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("HalfLabelB")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Inclusive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Percent")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SplitInHalves")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.ToTable("TaxRates");
                 });
 
             modelBuilder.Entity("Chakki.Web.Domain.UtilityExpense", b =>
@@ -1663,6 +1753,12 @@ namespace Chakki.Web.Data.Migrations
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Chakki.Web.Domain.TaxRate", "TaxRate")
+                        .WithMany()
+                        .HasForeignKey("TaxRateId");
+
+                    b.Navigation("TaxRate");
                 });
 
             modelBuilder.Entity("Chakki.Web.Domain.JournalEntry", b =>
@@ -1860,6 +1956,12 @@ namespace Chakki.Web.Data.Migrations
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Chakki.Web.Domain.TaxRate", "TaxRate")
+                        .WithMany()
+                        .HasForeignKey("TaxRateId");
+
+                    b.Navigation("TaxRate");
                 });
 
             modelBuilder.Entity("Chakki.Web.Domain.Sale", b =>
@@ -1926,6 +2028,15 @@ namespace Chakki.Web.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("Chakki.Web.Domain.TaxRate", b =>
+                {
+                    b.HasOne("Chakki.Web.Domain.Organization", null)
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Chakki.Web.Domain.UtilityExpense", b =>

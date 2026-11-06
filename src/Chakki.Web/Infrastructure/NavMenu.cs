@@ -55,6 +55,7 @@ public static class NavMenu
                 ("/rates", "bi-tags", "Rate card", tenant),
                 ("/settings", "bi-sliders", "Settings", tenant),
                 ("/settings/payments", "bi-credit-card", "Payment gateways", tenant && user.IsInRole(Roles.Owner)),
+                ("/settings/taxes", "bi-percent", "Taxes (GST / VAT)", tenant && user.IsInRole(Roles.Owner)),
                 ("/users", "bi-person-gear", "Users", tenant && user.IsInRole(Roles.Owner)),
                 ("/platform", "bi-buildings", "All chakkis", user.IsInRole(Roles.PlatformAdmin)),
             ]),
@@ -64,5 +65,5 @@ public static class NavMenu
     }
 
     /// <summary>Items shown in the side menu (sub-pages such as "New order" are reached from their module).</summary>
-    public static readonly HashSet<string> MenuOnly = ["/orders/new", "/udhaar/old", "/reports/trial-balance", "/settings/payments"];
+    public static readonly HashSet<string> MenuOnly = ["/orders/new", "/udhaar/old", "/reports/trial-balance", "/settings/payments", "/settings/taxes"];
 }

@@ -37,6 +37,7 @@
           <div class="col-4"><label class="form-label" for="salePrice">@T["Sale price"]</label><input class="form-control" id="salePrice" name="salePrice" type="number" step="0.01" min="0" value="0"></div>
           <div class="col-4"><label class="form-label" for="buybackRate">@T["Buyback rate"]</label><input class="form-control" id="buybackRate" name="buybackRate" type="number" step="0.01" min="0" value="0"></div>
           <div class="col-4"><label class="form-label" for="reorderLevel">@T["Reorder at"]</label><input class="form-control" id="reorderLevel" name="reorderLevel" type="number" step="0.01" min="0" value="0"></div>
+          <div class="col-12"><label class="form-label" for="taxRateId">@T["Tax on sale (GST / VAT)"]</label><select class="form-select" id="taxRateId" name="taxRateId"><option value="">@T["No tax"]</option>@foreach (var t in (List<TaxRate>)ViewBag.Taxes) { <option value="@t.Id">@t.Label</option> }</select></div>
         </div>
         <p class="form-text">@T["Choosing an existing item replaces its details with what you type here."]</p>
         <button class="btn btn-primary w-100">@T["Save item"]</button>
