@@ -188,3 +188,127 @@
   }
   initCharts(document);
 })();
+
+// ==================================================================== Global search, searchable dropdowns, searchable tables
+(() => {
+  "use strict";
+  const hi = (document.documentElement.lang || "").startsWith("hi");
+  const t = (en, hin) => (hi ? hin : en);
+
+  // ---------------------------------------------------------------- Global search (Ctrl+K or "/")
+  const modalEl = document.getElementById("ca-search");
+  const openSearch = () => {
+    if (!modalEl || !window.bootstrap) return false;
+    window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    return true;
+  };
+  if (modalEl) {
+    modalEl.addEventListener("shown.bs.modal", () => { const q = document.getElementById("ca-search-q"); q?.focus(); q?.select(); });
+    modalEl.addEventListener("keydown", (e) => {
+      const hits = [...modalEl.querySelectorAll("[data-ca-search-hit]")];
+      if (!hits.length) return;
+      const i = hits.indexOf(document.activeElement);
+      if (e.key === "ArrowDown") { e.preventDefault(); hits[Math.min(i + 1, hits.length - 1)].focus(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); if (i <= 0) document.getElementById("ca-search-q")?.focus(); else hits[i - 1].focus(); }
+      else if (e.key === "Enter" && e.target.id === "ca-search-q") { e.preventDefault(); hits[0].click(); }
+    });
+  }
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest("[data-ca-search-open]");
+    if (trigger && openSearch()) e.preventDefault();
+  });
+  document.addEventListener("keydown", (e) => {
+    const typing = e.target.closest("input, textarea, select, [contenteditable=true], .ts-control");
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { if (openSearch()) e.preventDefault(); }
+    else if (e.key === "/" && !typing) { if (openSearch()) e.preventDefault(); }
+  });
+
+  // ---------------------------------------------------------------- Searchable dropdowns (Tom Select) on every <select>
+  const enhanceSelect = (sel) => {
+    if (!window.TomSelect || sel.tomselect || sel.matches("[data-ca-plain], [multiple]") || sel.closest(".ts-wrapper")) return;
+    const ts = new window.TomSelect(sel, {
+      create: false,
+      allowEmptyOption: true,
+      maxOptions: 500,
+      refreshThrottle: 0,
+      searchField: ["text"],
+      plugins: ["dropdown_input"],
+      render: { no_results: () => `<div class="no-results">${t("No match", "कुछ नहीं मिला")}</div>` },
+      onInitialize() { this.control_input?.setAttribute("placeholder", t("Type to search…", "खोजने के लिए लिखें…")); },
+    });
+    ts.wrapper.classList.add("ca-ts");
+  };
+  const enhanceSelects = (root) => root.querySelectorAll?.("select").forEach(enhanceSelect);
+
+  // ---------------------------------------------------------------- Searchable tables: a filter box above every data table
+  const norm = (s) => (s || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const enhanceTable = (table) => {
+    if (table.dataset.caFilter || table.matches("[data-ca-no-filter]") || table.closest("[data-ca-no-filter]")) return;
+    const body = table.tBodies[0];
+    if (!body || body.rows.length < 3) return; // very short tables need no search box
+    table.dataset.caFilter = "1";
+    const box = document.createElement("div");
+    box.className = "ca-table-filter";
+    box.innerHTML = `<i class="bi bi-search" aria-hidden="true"></i><input class="form-control form-control-sm" type="search" placeholder="${t("Search in this table…", "इस सूची में खोजें…")}" aria-label="${t("Search in this table", "इस सूची में खोजें")}"><span class="ca-table-count" aria-live="polite"></span>`;
+    const anchor = table.closest(".table-responsive, .ca-table-wrap") || table;
+    anchor.before(box);
+    const input = box.querySelector("input");
+    const count = box.querySelector(".ca-table-count");
+    const apply = () => {
+      const words = norm(input.value).split(" ").filter(Boolean);
+      const rows = [...table.tBodies].flatMap((b) => [...b.rows]).filter((r) => !r.matches("[data-ca-empty-row]"));
+      let shown = 0;
+      rows.forEach((r) => {
+        const text = norm(r.textContent + " " + [...r.querySelectorAll("input[value], select")].map((x) => x.value).join(" "));
+        const ok = words.every((w) => text.includes(w));
+        r.hidden = !ok;
+        if (ok) shown++;
+      });
+      count.textContent = words.length ? `${shown} / ${rows.length}` : "";
+      let empty = body.querySelector("[data-ca-empty-row]");
+      if (words.length && shown === 0 && rows.length) {
+        if (!empty) {
+          empty = body.insertRow();
+          empty.setAttribute("data-ca-empty-row", "");
+          const cell = empty.insertCell();
+          cell.colSpan = table.rows[0]?.cells.length || 1;
+          cell.className = "text-center text-body-secondary py-3";
+          cell.textContent = t("No matching rows", "कोई मिलती पंक्ति नहीं");
+        }
+      } else empty?.remove();
+    };
+    input.addEventListener("input", apply);
+    table.caApplyFilter = apply;
+  };
+  const enhanceTables = (root) => root.querySelectorAll?.("table.table").forEach(enhanceTable);
+
+  const enhance = (root) => { enhanceSelects(root); enhanceTables(root); };
+  enhance(document);
+  if (window.htmx) {
+    window.htmx.onLoad((el) => {
+      enhance(el);
+      // A row swapped in by HTMX (e.g. attendance) keeps the current table filter.
+      el.closest?.("table")?.caApplyFilter?.();
+    });
+  }
+
+  // Grinding order form clones its last line: give the clone a fresh dropdown.
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("[data-ca-add-line]")) return;
+    setTimeout(() => {
+      document.querySelectorAll("[data-ca-line]").forEach((line) => {
+        const wrappers = line.querySelectorAll(".ts-wrapper");
+        const sel = line.querySelector("select");
+        if (sel && !sel.tomselect && wrappers.length) {
+          wrappers.forEach((w) => w.remove());
+          sel.classList.remove("tomselected", "ts-hidden-accessible");
+          sel.removeAttribute("tabindex"); sel.removeAttribute("id");
+          sel.style.display = "";
+          sel.selectedIndex = 0;
+          enhanceSelect(sel);
+          sel.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+    }, 0);
+  }, true);
+})();

@@ -6,7 +6,7 @@
 else
 {
   <div class="ca-table-wrap">
-    <table class="table table-hover">
+    <table class="table table-hover" data-ca-no-filter>
       <thead><tr><th>@T["Order"]</th><th>@T["Customer"]</th><th class="num">@T["Weight"]</th><th class="num">@T["Amount"]</th><th>@T["Status"]</th><th>@T["Payment"]</th><th>@T["Date"]</th></tr></thead>
       <tbody>
       @foreach (var o in Model.Orders)

@@ -3,49 +3,7 @@
 @{
     var path = (Context.Request.Path.Value ?? "/").ToLowerInvariant();
     bool Active(string href) => href == "/" ? path == "/" : path.StartsWith(href);
-    bool Any(params string[] roles) => roles.Any(User.IsInRole);
-    var tenant = User.HasClaim(c => c.Type == TenantClaims.OrganizationId);
-    var floor = Any("Owner", "Manager", "Operator");
-    var money = Any("Owner", "Manager", "Accountant");
-    var books = Any("Owner", "Accountant");
-    var people = Any("Owner", "Manager");
-    var sections = new List<(string Title, List<(string Href, string Icon, string Label, bool Show)> Items)>
-    {
-        ("Daily work", new() {
-            ("/", "bi-speedometer2", "Dashboard", tenant),
-            ("/orders", "bi-basket", "Grinding orders", tenant),
-            ("/customers", "bi-people", "Customers", tenant),
-            ("/udhaar", "bi-journal-text", "Udhaar", money || floor),
-            ("/payments", "bi-qr-code", "Payments", money || floor),
-            ("/chat", "bi-chat-dots", "Ask the assistant", tenant),
-        }),
-        ("Stock", new() {
-            ("/inventory", "bi-box-seam", "Inventory", tenant),
-            ("/purchases", "bi-truck", "Purchases", money),
-            ("/sales", "bi-cart", "Sales", tenant),
-            ("/buyback", "bi-arrow-left-right", "Buyback", floor || money),
-            ("/production", "bi-gear-wide-connected", "Production", floor),
-            ("/wastage", "bi-trash3", "Wastage", floor),
-            ("/suppliers", "bi-shop", "Suppliers", money),
-        }),
-        ("Money", new() {
-            ("/accounts", "bi-bank", "Accounts", books),
-            ("/utilities", "bi-lightning-charge", "Utilities", money),
-            ("/reports", "bi-graph-up", "Reports", money),
-        }),
-        ("People & machines", new() {
-            ("/employees", "bi-person-badge", "Employees", people),
-            ("/attendance", "bi-calendar-check", "Attendance", floor),
-            ("/payroll", "bi-cash-stack", "Payroll", Any("Owner", "Accountant", "Manager")),
-            ("/maintenance", "bi-tools", "Maintenance", floor),
-        }),
-        ("Setup", new() {
-            ("/rates", "bi-tags", "Rate card", tenant),
-            ("/settings", "bi-sliders", "Settings", tenant),
-            ("/users", "bi-person-gear", "Users", User.IsInRole("Owner")),
-            ("/platform", "bi-buildings", "All chakkis", User.IsInRole("PlatformAdmin")),
-        }),
-    };
+    var sections = Chakki.Web.Infrastructure.NavMenu.For(User);
 }
 <aside class="offcanvas offcanvas-start ca-nav" tabindex="-1" id="ca-nav" aria-labelledby="ca-nav-title" data-bs-theme="dark">
   <div class="offcanvas-header">
@@ -60,11 +18,11 @@
   </div>
   <div class="offcanvas-body">
     <nav aria-label="@T["Modules"]">
-      @foreach (var (title, items) in sections)
+      @foreach (var section in sections)
       {
-        var visible = items.Where(i => i.Show).ToList();
+        var visible = section.Items.Where(i => !Chakki.Web.Infrastructure.NavMenu.MenuOnly.Contains(i.Href)).ToList();
         if (visible.Count == 0) { continue; }
-        <div class="ca-nav-header">@T[title]</div>
+        <div class="ca-nav-header">@T[section.Title]</div>
         <ul class="ca-nav-list">
           @foreach (var item in visible)
           {

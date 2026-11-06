@@ -10,7 +10,7 @@
       <p>@Model.Answer.Content</p>
       @if (table is { Rows.Count: > 0 })
       {
-        <div class="ca-table-wrap"><table class="table table-sm mb-0">
+        <div class="ca-table-wrap"><table class="table table-sm mb-0" data-ca-no-filter>
           <thead><tr>@foreach (var c in table.Columns) { <th>@c</th> }</tr></thead>
           <tbody>@foreach (var r in table.Rows) { <tr>@foreach (var v in r) { <td>@v</td> }</tr> }</tbody>
         </table></div>

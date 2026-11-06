@@ -1,0 +1,25 @@
+@model Chakki.Web.Controllers.SearchModel
+@if (Model.Q.Length == 0)
+{
+  <p class="ca-search-hint">@T["Search customers, orders (G-00012), phone, UTR, stock or a page name."]</p>
+}
+else if (Model.Groups.Count == 0)
+{
+  <p class="ca-search-hint">@T["Nothing found for \"{0}\".", Model.Q]</p>
+}
+else
+{
+  @foreach (var g in Model.Groups)
+  {
+    <div class="ca-search-group" role="group" aria-label="@g.Title">
+      <div class="ca-search-group-title">@g.Title</div>
+      @foreach (var h in g.Hits)
+      {
+        <a class="ca-search-hit" href="@h.Href" data-ca-search-hit>
+          <i class="bi @h.Icon" aria-hidden="true"></i>
+          <span class="ca-search-hit-text"><span class="ca-search-hit-title">@h.Title</span>@if (!string.IsNullOrWhiteSpace(h.Subtitle)) {<small>@h.Subtitle</small>}</span>
+        </a>
+      }
+    </div>
+  }
+}

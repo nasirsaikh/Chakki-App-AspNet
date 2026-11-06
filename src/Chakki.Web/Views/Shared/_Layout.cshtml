@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="~/css/fonts.css">
   <link rel="stylesheet" href="~/vendor/adminlte/adminlte.min.css">
   <link rel="stylesheet" href="~/vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="~/vendor/tom-select/tom-select.bootstrap5.min.css">
   <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true">
   <link rel="stylesheet" href="~/css/adminlte-app.css" asp-append-version="true">
   <link rel="stylesheet" href="~/css/app.css" asp-append-version="true">
@@ -49,11 +50,12 @@
         @if (User.HasClaim(c => c.Type == TenantClaims.OrganizationId))
         {
           <li class="nav-item d-none d-sm-block me-1"><a class="btn btn-primary btn-sm" href="/orders/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["New order"]</a></li>
+          <li class="nav-item"><a class="nav-link ca-search-trigger" href="/search" data-ca-search-open title="@T["Search"] (Ctrl+K)" aria-label="@T["Search"]"><i class="bi bi-search" aria-hidden="true"></i><span class="d-none d-lg-inline">@T["Search…"]</span><kbd class="d-none d-lg-inline">Ctrl K</kbd></a></li>
           <li class="nav-item"><a class="nav-link" href="/chat" title="@T["Ask the assistant"]" aria-label="@T["Ask the assistant"]"><i class="bi bi-chat-dots" aria-hidden="true"></i></a></li>
         }
         <li class="nav-item">
           <form asp-antiforgery="true" method="post" action="/language" class="d-inline">
-            <input type="hidden" name="__RequestVerificationToken" value="@token">
+            
             <input type="hidden" name="culture" value="@(hi ? "en-IN" : "hi-IN")">
             <input type="hidden" name="returnUrl" value="@returnUrl">
             <button class="nav-link btn btn-link ca-lang" type="submit" title="@(hi ? "Switch to English" : "हिन्दी में देखें")" aria-label="@(hi ? "Switch to English" : "हिन्दी में देखें")">
@@ -76,7 +78,7 @@
               </li>
               <li><a class="dropdown-item" href="/account/password"><i class="bi bi-key" aria-hidden="true"></i> @T["Change password"]</a></li>
               <li class="user-footer">
-                <form asp-antiforgery="true" method="post" action="/account/logout"><input type="hidden" name="__RequestVerificationToken" value="@token"><button class="btn btn-outline-secondary btn-sm w-100" type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> @T["Sign out"]</button></form>
+                <form asp-antiforgery="true" method="post" action="/account/logout"><button class="btn btn-outline-secondary btn-sm w-100" type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> @T["Sign out"]</button></form>
               </li>
             </ul>
           </li>
@@ -88,6 +90,22 @@
   @if (User.Identity?.IsAuthenticated == true)
   {
     <partial name="_Nav" />
+    @if (User.HasClaim(c => c.Type == TenantClaims.OrganizationId))
+    {
+      <div class="modal fade ca-search-modal" id="ca-search" tabindex="-1" aria-label="@T["Search"]" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header gap-2">
+              <i class="bi bi-search text-body-secondary" aria-hidden="true"></i>
+              <input class="form-control border-0 shadow-none ca-search-input" type="search" name="q" id="ca-search-q" autocomplete="off" placeholder="@T["Search…"]" aria-label="@T["Search"]"
+                     hx-get="/search" hx-trigger="input changed delay:200ms, search" hx-target="#ca-gsearch-results" hx-sync="this:replace">
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@T["Close"]"></button>
+            </div>
+            <div class="modal-body p-2 ca-gsearch-results" id="ca-gsearch-results"><p class="ca-search-hint">@T["Search customers, orders (G-00012), phone, UTR, stock or a page name."]</p></div>
+          </div>
+        </div>
+      </div>
+    }
   }
 
   <main id="main" class="ca-main" tabindex="-1">
@@ -128,6 +146,7 @@
 <script src="~/vendor/bootstrap/bootstrap.bundle.min.js"></script>
 <script src="~/vendor/htmx/htmx.min.js"></script>
 @await RenderSectionAsync("Scripts", required: false)
+<script src="~/vendor/tom-select/tom-select.complete.min.js"></script>
 <script src="~/js/app.js" asp-append-version="true"></script>
 </body>
 </html>

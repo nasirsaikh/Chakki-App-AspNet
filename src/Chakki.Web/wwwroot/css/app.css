@@ -171,3 +171,48 @@ details > summary.ca-chat-side-title { cursor: pointer; }
   .ca-brand-text { max-width: 100%; font-size: .95rem; }
   .ca-brand-mark { flex: 0 0 auto; }
 }
+
+/* Global search */
+.ca-search-trigger { gap: .45rem; }
+@media (min-width: 992px) {
+  .ca-search-trigger { border: 1px solid var(--bs-border-color); border-radius: 999px; padding: .3rem .5rem .3rem .8rem !important; min-width: 14rem !important; justify-content: flex-start !important; color: var(--bs-secondary-color) !important; margin-right: .35rem; }
+  .ca-search-trigger kbd { margin-left: auto; font-size: .7rem; background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); border: 1px solid var(--bs-border-color); }
+}
+.ca-search-modal .modal-dialog { margin-top: 4.5rem; }
+@media (max-width: 575.98px) { .ca-search-modal .modal-dialog { margin: .5rem; margin-top: 3.75rem; } }
+.ca-search-input { font-size: 1.05rem; padding-left: 0; }
+.ca-search-hint { color: var(--bs-secondary-color); margin: .75rem; }
+.ca-search-group + .ca-search-group { margin-top: .35rem; }
+.ca-search-group-title { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--bs-secondary-color); padding: .5rem .75rem .25rem; }
+.ca-search-hit { display: flex; align-items: center; gap: .75rem; min-height: 2.75rem; padding: .45rem .75rem; border-radius: var(--ca-radius); color: var(--bs-body-color); text-decoration: none; }
+.ca-search-hit:hover, .ca-search-hit:focus { background: var(--bs-tertiary-bg); color: var(--bs-emphasis-color); text-decoration: none; outline: none; }
+.ca-search-hit:focus-visible { box-shadow: inset 0 0 0 2px var(--ca-primary, #b45309); }
+.ca-search-hit > .bi { color: var(--ca-primary, #b45309); font-size: 1.1rem; }
+.ca-search-hit-text { display: flex; flex-direction: column; min-width: 0; }
+.ca-search-hit-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ca-search-hit small { color: var(--bs-secondary-color); }
+
+/* Searchable dropdowns (Tom Select) in the app theme, light and dark */
+.ca-ts.ts-wrapper { min-width: 8rem; }
+.ca-ts .ts-control, .ca-ts.single.input-active .ts-control { background-color: var(--bs-body-bg); color: var(--bs-body-color); border-color: var(--bs-border-color); min-height: calc(1.5em + .75rem + 2px); border-radius: var(--bs-border-radius); }
+.ca-ts.focus .ts-control { border-color: var(--ca-primary, #b45309); box-shadow: 0 0 0 .2rem rgba(180, 83, 9, .2); }
+.ca-ts .ts-control input { color: var(--bs-body-color); }
+.ca-ts .ts-dropdown { background: var(--bs-body-bg); color: var(--bs-body-color); border-color: var(--bs-border-color); border-radius: var(--bs-border-radius); box-shadow: 0 .5rem 1.25rem rgba(0, 0, 0, .12); z-index: 1060; }
+.ca-ts .ts-dropdown .option { padding: .55rem .75rem; }
+.ca-ts .ts-dropdown .active { background: var(--bs-tertiary-bg); color: var(--bs-emphasis-color); }
+.ca-ts .ts-dropdown .selected { font-weight: 600; }
+.ca-ts .ts-dropdown .dropdown-input { background: var(--bs-body-bg); color: var(--bs-body-color); border-color: var(--bs-border-color); }
+.input-group > .ca-ts.ts-wrapper { flex: 1 1 auto; width: 1%; }
+.ca-filter .ca-ts.ts-wrapper { width: auto; min-width: 11rem; }
+
+/* Searchable tables */
+.ca-table-filter { position: relative; display: flex; align-items: center; gap: .5rem; padding: .6rem .75rem; border-bottom: 1px solid var(--bs-border-color); }
+.ca-table-filter > .bi { position: absolute; left: 1.35rem; color: var(--bs-secondary-color); pointer-events: none; }
+.ca-table-filter input { max-width: 22rem; padding-left: 2rem; min-height: 2.4rem; }
+.ca-table-count { font-size: .8rem; color: var(--bs-secondary-color); white-space: nowrap; }
+.ca-ts.single .ts-control { flex-wrap: nowrap; overflow: hidden; }
+.ca-ts.single .ts-control > .item { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ca-ts .dropdown-input-wrap { padding: .4rem; }
+.ca-ts .ts-dropdown .dropdown-input { border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); padding: .45rem .6rem; min-height: 2.4rem; }
+.ca-ts .ts-dropdown .dropdown-input:focus { border-color: var(--ca-primary, #b45309); box-shadow: 0 0 0 .2rem rgba(180, 83, 9, .2); outline: none; }
+.ca-search-modal .ca-gsearch-results { max-height: min(70dvh, 34rem); overflow-y: auto; }

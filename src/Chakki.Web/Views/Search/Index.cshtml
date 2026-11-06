@@ -1,0 +1,10 @@
+@model Chakki.Web.Controllers.SearchModel
+@{ ViewData["Title"] = T["Search"].Value; }
+<form method="get" action="/search" class="mb-3" role="search">
+  <div class="input-group">
+    <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+    <input class="form-control" type="search" name="q" value="@Model.Q" autofocus aria-label="@T["Search"]" placeholder="@T["Search…"]"
+           hx-get="/search" hx-trigger="input changed delay:250ms, search" hx-target="#search-page-results" hx-push-url="false">
+  </div>
+</form>
+<div class="card"><div class="card-body p-2 ca-gsearch-results" id="search-page-results"><partial name="_Results" model="Model" /></div></div>
