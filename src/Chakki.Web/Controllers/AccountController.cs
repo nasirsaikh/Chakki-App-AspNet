@@ -27,11 +27,10 @@ public class RegisterInput
     public string Language { get; set; } = "hi";
 }
 
-[AllowAnonymous]
 [Route("account")]
 public class AccountController(SignInManager<AppUser> signIn, UserManager<AppUser> users, OnboardingService onboarding) : AppController
 {
-    [HttpGet("login")]
+    [AllowAnonymous, HttpGet("login")]
     public IActionResult Login(string? returnUrl = null)
     {
         if (User.Identity?.IsAuthenticated == true) return LocalRedirect("/");
@@ -39,7 +38,7 @@ public class AccountController(SignInManager<AppUser> signIn, UserManager<AppUse
         return View(new LoginInput());
     }
 
-    [HttpPost("login"), ValidateAntiForgeryToken, EnableRateLimiting("login")]
+    [AllowAnonymous, HttpPost("login"), ValidateAntiForgeryToken, EnableRateLimiting("login")]
     public async Task<IActionResult> Login(LoginInput input, string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
@@ -64,10 +63,10 @@ public class AccountController(SignInManager<AppUser> signIn, UserManager<AppUse
         return View(input);
     }
 
-    [HttpGet("register")]
+    [AllowAnonymous, HttpGet("register")]
     public IActionResult Register() => View(new RegisterInput { Language = Hindi ? "hi" : "en" });
 
-    [HttpPost("register"), ValidateAntiForgeryToken, EnableRateLimiting("login")]
+    [AllowAnonymous, HttpPost("register"), ValidateAntiForgeryToken, EnableRateLimiting("login")]
     public async Task<IActionResult> Register(RegisterInput input)
     {
         if (!ModelState.IsValid) return View(input);
@@ -91,14 +90,14 @@ public class AccountController(SignInManager<AppUser> signIn, UserManager<AppUse
         }
     }
 
-    [HttpPost("logout"), ValidateAntiForgeryToken]
+    [AllowAnonymous, HttpPost("logout"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
         await signIn.SignOutAsync();
         return LocalRedirect("/account/login");
     }
 
-    [HttpGet("denied")]
+    [AllowAnonymous, HttpGet("denied")]
     public IActionResult Denied() => View();
 
     [Authorize, HttpGet("password")]
@@ -130,16 +129,16 @@ public class AccountController(SignInManager<AppUser> signIn, UserManager<AppUse
 public class LanguageController : Controller
 {
     [HttpPost("/language"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> Set(string culture, string? returnUrl, [FromServices] UserManager<AppUser> users)
+    public async Task<IActionResult> Set(string culture, string? returnUrl, [FromServices] UserManager<AppUser> userManager)
     {
         culture = culture == "en-IN" ? "en-IN" : "hi-IN";
         Response.Cookies.Append(CookieRequestCultureProvider.DefaultCookieName,
             CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(culture)),
             new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), IsEssential = true, SameSite = SameSiteMode.Lax, HttpOnly = true });
-        if (User.Identity?.IsAuthenticated == true && await users.GetUserAsync(User) is { } user)
+        if (User.Identity?.IsAuthenticated == true && await userManager.GetUserAsync(User) is { } user)
         {
             user.PreferredLanguage = culture[..2];
-            await users.UpdateAsync(user);
+            await userManager.UpdateAsync(user);
         }
         return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : "/");
     }

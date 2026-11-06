@@ -51,7 +51,7 @@ set ASPNETCORE_ENVIRONMENT=Development
 dotnet run
 ```
 
-Windows PowerShell: `$env:Seed__DemoPassword='choose-a-password'; $env:ASPNETCORE_ENVIRONMENT='Development'; dotnet run`
+Windows PowerShell (the prompt starts with `PS`; `set` does not work there): `$env:Seed__DemoPassword='choose-a-password'; $env:ASPNETCORE_ENVIRONMENT='Development'; dotnet run`
 
 ### Tests
 

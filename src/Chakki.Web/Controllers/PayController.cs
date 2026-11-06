@@ -15,18 +15,17 @@ public record PayModel(Payment Payment, GrindingOrder Order, Organization Org, s
 /// Payment screen. It works at the counter (staff signed in) and as a link the customer opens on their phone.
 /// The reference is a random 80-bit token, and the page shows only what the customer needs to pay.
 /// </summary>
-[AllowAnonymous]
 [Route("pay")]
 public class PayController(AppDbContext db, PaymentService payments, IConfiguration config) : AppController
 {
-    [HttpGet("{reference}")]
+    [AllowAnonymous, HttpGet("{reference}")]
     public async Task<IActionResult> Show(string reference)
     {
         var model = await LoadAsync(reference);
         return model == null ? NotFound() : View(model);
     }
 
-    [HttpGet("{reference}/status")]
+    [AllowAnonymous, HttpGet("{reference}/status")]
     public async Task<IActionResult> Status(string reference)
     {
         var model = await LoadAsync(reference);
@@ -35,7 +34,7 @@ public class PayController(AppDbContext db, PaymentService payments, IConfigurat
         return PartialView("_Status", model);
     }
 
-    [HttpPost("{reference}/razorpay"), ValidateAntiForgeryToken]
+    [AllowAnonymous, HttpPost("{reference}/razorpay"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Razorpay(string reference, string razorpay_order_id, string razorpay_payment_id, string razorpay_signature)
     {
         var payment = await db.Payments.IgnoreQueryFilters().Include(p => p.Gateway).FirstOrDefaultAsync(p => p.Reference == reference);
