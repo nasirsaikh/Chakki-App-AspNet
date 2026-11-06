@@ -3,30 +3,60 @@
   "use strict";
   const root = document.documentElement;
 
-  // ---------------------------------------------------------------- Light / dark / system
+  // ---------------------------------------------------------------- Look: colour mode, accent, font, text size, sidebar, top bar
+  // Saved in the "chakki-theme" cookie so the server paints the right look first time (see ThemePrefs.cs).
   const MODES = ["system", "light", "dark"];
   const ICONS = { system: "bi-circle-half", light: "bi-sun", dark: "bi-moon-stars" };
-  const applyMode = (mode) => {
-    root.dataset.caMode = mode;
-    const dark = mode === "dark" || (mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-    root.setAttribute("data-bs-theme", dark ? "dark" : "light");
-    document.querySelectorAll("[data-ca-theme-icon]").forEach((i) => { i.className = `bi ${ICONS[mode]}`; });
+  const DEFAULTS = { mode: "system", accent: "blue", font: "source", size: "14", sidebar: "dark", header: "light", density: "compact" };
+  const prefs = { ...DEFAULTS };
+  try {
+    const raw = document.cookie.split("; ").find((c) => c.startsWith("chakki-theme="));
+    if (raw) new URLSearchParams(decodeURIComponent(raw.slice(13))).forEach((v, k) => { if (k in prefs) prefs[k] = v; });
+  } catch { /* unreadable cookie: defaults */ }
+  const save = () => {
+    const value = encodeURIComponent(new URLSearchParams(prefs).toString());
+    document.cookie = `chakki-theme=${value}; path=/; max-age=31536000; samesite=lax`;
   };
-  let mode = "system";
-  try { mode = localStorage.getItem("chakki-mode") || "system"; } catch { /* storage blocked */ }
-  applyMode(mode);
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest("[data-ca-theme]")) return;
-    mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
-    try { localStorage.setItem("chakki-mode", mode); } catch { /* ignore */ }
-    applyMode(mode);
+  const panel = () => document.querySelector("[data-ca-customize]");
+  const apply = () => {
+    const dark = prefs.mode === "dark" || (prefs.mode === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+    root.dataset.caMode = prefs.mode;
+    root.setAttribute("data-bs-theme", dark ? "dark" : "light");
+    root.dataset.density = prefs.density;
+    root.dataset.caHeader = prefs.header;
+    root.dataset.caSidebar = prefs.sidebar;
+    document.querySelector(".app-sidebar")?.setAttribute("data-bs-theme", prefs.sidebar);
+    const p = panel();
+    const accent = p?.querySelector(`input[name=accent][value="${prefs.accent}"]`);
+    if (accent) { root.style.setProperty("--ca-primary", accent.dataset.hex); root.style.setProperty("--ca-primary-rgb", accent.dataset.rgb); }
+    const font = p?.querySelector(`select[name=font] option[value="${prefs.font}"]`);
+    if (font) root.style.setProperty("--ca-font", `${font.dataset.family}, "Noto Sans Devanagari", "Nirmala UI", "Mangal", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`);
+    root.style.setProperty("--ca-font-size", `${prefs.size}px`);
+    document.querySelector("meta[name=theme-color]")?.setAttribute("content", accent?.dataset.hex || "#0d6efd");
+    document.querySelectorAll("[data-ca-theme-icon]").forEach((i) => { i.className = `bi ${ICONS[prefs.mode] || ICONS.system}`; });
+    if (p) {
+      p.querySelectorAll("input[type=radio]").forEach((r) => { r.checked = prefs[r.name] === r.value; });
+      const sel = p.querySelector("select[name=font]"); if (sel) sel.value = prefs.font;
+      const sizeLabel = p.querySelector("[data-ca-size-label]");
+      const sizeInput = p.querySelector(`input[name=size][value="${prefs.size}"]`);
+      if (sizeLabel && sizeInput) sizeLabel.textContent = sizeInput.nextElementSibling.title;
+    }
+  };
+  // Older versions kept only the colour mode in local storage.
+  try { const old = localStorage.getItem("chakki-mode"); if (old && !document.cookie.includes("chakki-theme=")) { prefs.mode = old; save(); } localStorage.removeItem("chakki-mode"); } catch { /* ignore */ }
+  apply();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => { if (prefs.mode === "system") apply(); });
+  document.addEventListener("change", (e) => {
+    const field = e.target.closest("[data-ca-customize] [name]");
+    if (!field || !(field.name in prefs)) return;
+    prefs[field.name] = field.value;
+    save(); apply();
   });
-
-  // ---------------------------------------------------------------- Navigation sheet closes as soon as a module is chosen
   document.addEventListener("click", (e) => {
-    if (!e.target.closest("[data-ca-nav-link]")) return;
-    const sheet = document.getElementById("ca-nav");
-    if (sheet && window.bootstrap) window.bootstrap.Offcanvas.getOrCreateInstance(sheet).hide();
+    if (e.target.closest("[data-ca-customize-reset]")) { Object.assign(prefs, DEFAULTS); save(); apply(); return; }
+    if (!e.target.closest("[data-ca-theme]")) return;
+    prefs.mode = MODES[(MODES.indexOf(prefs.mode) + 1) % MODES.length];
+    save(); apply();
   });
 
   // ---------------------------------------------------------------- Alerts, confirmations, auto-submit

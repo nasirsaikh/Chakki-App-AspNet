@@ -1,0 +1,94 @@
+@model Chakki.Web.Infrastructure.ThemePrefs
+@using Chakki.Web.Infrastructure
+@{
+    var modeIcons = new Dictionary<string, string> { ["light"] = "bi-sun", ["dark"] = "bi-moon-stars", ["system"] = "bi-circle-half" };
+    var modeLabels = new Dictionary<string, string> { ["light"] = "Light", ["dark"] = "Dark", ["system"] = "Same as device" };
+}
+<div class="offcanvas offcanvas-end ca-customize" tabindex="-1" id="ca-customize" aria-labelledby="ca-customize-title">
+  <div class="offcanvas-header">
+    <h2 class="offcanvas-title fs-5" id="ca-customize-title"><i class="bi bi-palette" aria-hidden="true"></i> @T["Customize look"]</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="@T["Close"]"></button>
+  </div>
+  <div class="offcanvas-body" data-ca-customize>
+    <p class="small text-body-secondary">@T["Changes apply at once and are remembered on this device."]</p>
+
+    <fieldset class="ca-opt">
+      <legend>@T["Colour mode"]</legend>
+      <div class="ca-seg">
+        @foreach (var m in ThemePrefs.Modes)
+        {
+          <input class="btn-check" type="radio" name="mode" id="opt-mode-@m" value="@m" checked="@(Model.Mode == m)">
+          <label class="btn btn-outline-secondary" for="opt-mode-@m"><i class="bi @modeIcons[m]" aria-hidden="true"></i> @T[modeLabels[m]]</label>
+        }
+      </div>
+    </fieldset>
+
+    <fieldset class="ca-opt">
+      <legend>@T["Text size"]</legend>
+      <div class="ca-seg">
+        @foreach (var s in ThemePrefs.Sizes)
+        {
+          <input class="btn-check" type="radio" name="size" id="opt-size-@s.Px" value="@s.Px" checked="@(Model.Size == s.Px)">
+          <label class="btn btn-outline-secondary ca-size-@s.Px" for="opt-size-@s.Px" title="@T[s.Label]"><span aria-hidden="true">A</span><span class="visually-hidden">@T[s.Label]</span></label>
+        }
+      </div>
+      <div class="form-text" data-ca-size-label>@T[ThemePrefs.Sizes.First(z => z.Px == Model.Size).Label]</div>
+    </fieldset>
+
+    <fieldset class="ca-opt">
+      <legend>@T["Accent colour"]</legend>
+      <div class="ca-swatches">
+        @foreach (var a in ThemePrefs.Accents)
+        {
+          <input class="btn-check" type="radio" name="accent" id="opt-accent-@a.Key" value="@a.Key" data-hex="@a.Hex" data-rgb="@a.Rgb" checked="@(Model.Accent == a.Key)">
+          <label class="ca-swatch ca-swatch-@a.Key" for="opt-accent-@a.Key" title="@T[a.Label]"><span class="visually-hidden">@T[a.Label]</span></label>
+        }
+      </div>
+    </fieldset>
+
+    <fieldset class="ca-opt">
+      <legend>@T["Font"]</legend>
+      <select class="form-select" name="font" aria-label="@T["Font"]" data-ca-plain>
+        @foreach (var f in ThemePrefs.Fonts)
+        {
+          <option value="@f.Key" data-family="@f.Family" selected="@(Model.Font == f.Key)">@f.Label</option>
+        }
+      </select>
+    </fieldset>
+
+    <fieldset class="ca-opt">
+      <legend>@T["Sidebar"]</legend>
+      <div class="ca-seg">
+        @foreach (var s in ThemePrefs.Sidebars)
+        {
+          <input class="btn-check" type="radio" name="sidebar" id="opt-sidebar-@s" value="@s" checked="@(Model.Sidebar == s)">
+          <label class="btn btn-outline-secondary" for="opt-sidebar-@s">@T[s == "dark" ? "Dark" : "Light"]</label>
+        }
+      </div>
+    </fieldset>
+
+    <fieldset class="ca-opt">
+      <legend>@T["Top bar"]</legend>
+      <div class="ca-seg">
+        @foreach (var h in ThemePrefs.Headers)
+        {
+          <input class="btn-check" type="radio" name="header" id="opt-header-@h" value="@h" checked="@(Model.Header == h)">
+          <label class="btn btn-outline-secondary" for="opt-header-@h">@T[h switch { "dark" => "Dark", "primary" => "Accent", _ => "Light" }]</label>
+        }
+      </div>
+    </fieldset>
+
+    <fieldset class="ca-opt">
+      <legend>@T["Spacing"]</legend>
+      <div class="ca-seg">
+        @foreach (var d in ThemePrefs.Densities)
+        {
+          <input class="btn-check" type="radio" name="density" id="opt-density-@d" value="@d" checked="@(Model.Density == d)">
+          <label class="btn btn-outline-secondary" for="opt-density-@d">@T[d == "compact" ? "Compact" : "Comfortable"]</label>
+        }
+      </div>
+    </fieldset>
+
+    <button type="button" class="btn btn-outline-secondary w-100 mt-2" data-ca-customize-reset><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> @T["Back to default look"]</button>
+  </div>
+</div>

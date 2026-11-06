@@ -1,36 +1,46 @@
-/* Chakki ERP — app layer on top of the CoreApp-AI theme (theme.css + adminlte-app.css).
- * Brand: warm wheat/amber primary. Layout: header + off-canvas navigation that is always closed by default. */
-:root {
-  --ca-primary: #b45309; --ca-primary-rgb: 180, 83, 9; --ca-primary-contrast: #fff;
-  --ca-success: #15803d; --ca-success-rgb: 21, 128, 61;
-  --ca-sidebar-bg: #2b2118; --ca-body-bg: #f7f4ef;
-  --ca-font-size: 14px; --ca-radius: 8px; --ca-header-h: 3.25rem; --ca-bg: transparent;
-  --ca-font: "Source Sans 3 Variable", "Noto Sans Devanagari", "Nirmala UI", "Mangal", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-}
-html[lang="hi"] { --ca-font-size: 15px; }
-.ca-shell { min-height: 100dvh; display: flex; flex-direction: column; }
-.ca-main { flex: 1 0 auto; width: 100%; outline: none; }
-.app-header { border-bottom: 1px solid var(--bs-border-color); z-index: 1030; }
-.ca-header-brand { display: flex; align-items: center; gap: .55rem; color: var(--bs-emphasis-color); font-weight: 600; font-size: 1.05rem; min-width: 0; }
+/* Chakki ERP on the AdminLTE 4 layout: fixed sidebar (mini when collapsed), top bar, content header with breadcrumb.
+ * Colours, font and text size come from the "Customize look" panel (ThemePrefs.cs) as --ca-* variables on <html>. */
+html[lang="hi"] { font-size: calc(var(--ca-font-size) + 1px); }
+.app-main { outline: none; }
+.ca-no-sidebar .app-wrapper { grid-template-columns: 1fr; grid-template-areas: "lte-app-header" "lte-app-main" "lte-app-footer"; }
+.ca-header-brand { display: flex; align-items: center; gap: .55rem; color: var(--bs-emphasis-color); font-weight: 600; font-size: 1.05rem; min-width: 0; padding-inline: .25rem; }
 .ca-header-brand:hover { text-decoration: none; color: var(--bs-emphasis-color); }
+html[data-ca-header="primary"] .ca-header-brand, html[data-ca-header="dark"] .ca-header-brand { color: #fff; }
+html[data-ca-header="primary"] .ca-brand-mark { background: rgba(255, 255, 255, .2); box-shadow: none; }
 .ca-brand-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
 .ca-lang { gap: .15rem; font-size: .9rem !important; }
 .app-header .nav-link, .app-header .btn-link.nav-link { min-width: 2.6rem; justify-content: center; }
 
-/* Off-canvas navigation sheet */
-.ca-nav { --bs-offcanvas-width: min(19rem, 86vw); background: var(--ca-sidebar-bg); color: #e7e2da; }
-.ca-nav .offcanvas-header { border-bottom: 1px solid rgba(255, 255, 255, .08); padding: .75rem 1rem; }
-.ca-nav-brand { display: flex; align-items: center; gap: .65rem; color: #fff; min-width: 0; }
-.ca-nav-brand:hover { text-decoration: none; color: #fff; }
-.ca-nav-brand strong { display: block; font-size: 1rem; line-height: 1.2; }
-.ca-nav-brand small { display: block; font-size: .8rem; color: rgba(255, 255, 255, .6); }
-.ca-nav .offcanvas-body { padding: .25rem .6rem 1.5rem; }
-.ca-nav-header { padding: .9rem .6rem .3rem; font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: rgba(255, 255, 255, .45); }
-.ca-nav-list { list-style: none; margin: 0; padding: 0; }
-.ca-nav-list a { display: flex; align-items: center; gap: .7rem; min-height: 2.75rem; padding: .45rem .7rem; border-radius: var(--ca-radius); color: #e7e2da; font-size: 1rem; }
-.ca-nav-list a:hover { background: rgba(255, 255, 255, .07); color: #fff; text-decoration: none; }
-.ca-nav-list a.active { background: var(--ca-primary); color: var(--ca-primary-contrast); box-shadow: 0 1px 3px rgba(0, 0, 0, .25); }
-.ca-nav-list .bi { font-size: 1.1rem; width: 1.25rem; text-align: center; }
+/* Sidebar surfaces: AdminLTE dark (#343a40) or light, in both colour modes */
+html[data-bs-theme="dark"] .app-sidebar[data-bs-theme="light"] { background-color: #212529 !important; }
+.app-header .nav-link { white-space: nowrap; }
+.sidebar-brand .brand-link { min-width: 0; }
+.sidebar-brand .brand-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-mini.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand .brand-text { display: none; }
+
+/* Content header: title on the left, breadcrumb and page actions on the right (AdminLTE) */
+.ca-page-side { display: flex; flex-direction: column; align-items: flex-end; gap: .35rem; margin-inline-start: auto; }
+.ca-breadcrumb { margin: 0; font-size: .85rem; --bs-breadcrumb-divider-color: var(--bs-secondary-color); }
+.ca-breadcrumb .breadcrumb-item.active { color: var(--bs-secondary-color); max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 575.98px) { .ca-page-side { align-items: flex-start; margin-inline-start: 0; width: 100%; } .ca-breadcrumb { display: none; } }
+
+/* Customize look panel */
+.ca-customize { --bs-offcanvas-width: min(22rem, 92vw); }
+.ca-opt { margin-bottom: 1.1rem; }
+.ca-opt legend { font-size: .9rem; font-weight: 600; margin-bottom: .4rem; }
+.ca-seg { display: flex; flex-wrap: wrap; gap: .35rem; }
+.ca-seg .btn { flex: 1 1 auto; }
+.ca-size-13 span[aria-hidden] { font-size: 13px; } .ca-size-14 span[aria-hidden] { font-size: 15px; }
+.ca-size-16 span[aria-hidden] { font-size: 18px; } .ca-size-18 span[aria-hidden] { font-size: 21px; }
+.ca-swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: .4rem; }
+.ca-swatch { aspect-ratio: 1; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15); position: relative; }
+.btn-check:checked + .ca-swatch::after { content: "\F633"; font-family: "bootstrap-icons"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 1.1rem; }
+.btn-check:checked + .ca-swatch { outline: 2px solid var(--bs-emphasis-color); outline-offset: 2px; }
+.btn-check:focus-visible + .ca-swatch { outline: 2px solid var(--ca-primary); outline-offset: 3px; }
+.ca-swatch-blue { background: #0d6efd; } .ca-swatch-indigo { background: #6610f2; } .ca-swatch-purple { background: #6f42c1; }
+.ca-swatch-green { background: #198754; } .ca-swatch-teal { background: #0f766e; } .ca-swatch-wheat { background: #b45309; }
+.ca-swatch-red { background: #c82333; } .ca-swatch-dark { background: #343a40; }
+[data-bs-theme="dark"] .ca-swatch-dark { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35); }
 
 /* Touch-friendly controls */
 .form-control, .form-select { min-height: 2.6rem; }
@@ -191,8 +201,8 @@ details > summary.ca-chat-side-title { cursor: pointer; }
 .ca-search-group-title { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--bs-secondary-color); padding: .5rem .75rem .25rem; }
 .ca-search-hit { display: flex; align-items: center; gap: .75rem; min-height: 2.75rem; padding: .45rem .75rem; border-radius: var(--ca-radius); color: var(--bs-body-color); text-decoration: none; }
 .ca-search-hit:hover, .ca-search-hit:focus { background: var(--bs-tertiary-bg); color: var(--bs-emphasis-color); text-decoration: none; outline: none; }
-.ca-search-hit:focus-visible { box-shadow: inset 0 0 0 2px var(--ca-primary, #b45309); }
-.ca-search-hit > .bi { color: var(--ca-primary, #b45309); font-size: 1.1rem; }
+.ca-search-hit:focus-visible { box-shadow: inset 0 0 0 2px var(--ca-primary); }
+.ca-search-hit > .bi { color: var(--ca-primary); font-size: 1.1rem; }
 .ca-search-hit-text { display: flex; flex-direction: column; min-width: 0; }
 .ca-search-hit-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ca-search-hit small { color: var(--bs-secondary-color); }
@@ -200,7 +210,7 @@ details > summary.ca-chat-side-title { cursor: pointer; }
 /* Searchable dropdowns (Tom Select) in the app theme, light and dark */
 .ca-ts.ts-wrapper { min-width: 8rem; }
 .ca-ts .ts-control, .ca-ts.single.input-active .ts-control { background-color: var(--bs-body-bg); color: var(--bs-body-color); border-color: var(--bs-border-color); min-height: calc(1.5em + .75rem + 2px); border-radius: var(--bs-border-radius); }
-.ca-ts.focus .ts-control { border-color: var(--ca-primary, #b45309); box-shadow: 0 0 0 .2rem rgba(180, 83, 9, .2); }
+.ca-ts.focus .ts-control { border-color: var(--ca-primary); box-shadow: 0 0 0 .2rem rgba(var(--ca-primary-rgb), .2); }
 .ca-ts .ts-control input { color: var(--bs-body-color); }
 .ca-ts .ts-dropdown { background: var(--bs-body-bg); color: var(--bs-body-color); border-color: var(--bs-border-color); border-radius: var(--bs-border-radius); box-shadow: 0 .5rem 1.25rem rgba(0, 0, 0, .12); z-index: 1060; }
 .ca-ts .ts-dropdown .option { padding: .55rem .75rem; }
@@ -219,7 +229,7 @@ details > summary.ca-chat-side-title { cursor: pointer; }
 .ca-ts.single .ts-control > .item { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ca-ts .dropdown-input-wrap { padding: .4rem; }
 .ca-ts .ts-dropdown .dropdown-input { border: 1px solid var(--bs-border-color); border-radius: var(--bs-border-radius); padding: .45rem .6rem; min-height: 2.4rem; }
-.ca-ts .ts-dropdown .dropdown-input:focus { border-color: var(--ca-primary, #b45309); box-shadow: 0 0 0 .2rem rgba(180, 83, 9, .2); outline: none; }
+.ca-ts .ts-dropdown .dropdown-input:focus { border-color: var(--ca-primary); box-shadow: 0 0 0 .2rem rgba(var(--ca-primary-rgb), .2); outline: none; }
 .ca-search-modal .ca-gsearch-results { max-height: min(70dvh, 34rem); overflow-y: auto; }
 
 /* Step wizard */

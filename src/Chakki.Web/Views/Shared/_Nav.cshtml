@@ -1,35 +1,44 @@
 @using System.Security.Claims
 @using Chakki.Web.Tenancy
+@model Chakki.Web.Infrastructure.ThemePrefs
 @{
     var path = (Context.Request.Path.Value ?? "/").ToLowerInvariant();
     bool Active(string href) => href == "/" ? path == "/" : path.StartsWith(href);
     var sections = Chakki.Web.Infrastructure.NavMenu.For(User);
+    var orgName = User.FindFirstValue(TenantClaims.OrganizationName);
+    var fullName = User.FindFirstValue(TenantClaims.FullName) ?? User.Identity?.Name ?? "";
 }
-<aside class="offcanvas offcanvas-start ca-nav" tabindex="-1" id="ca-nav" aria-labelledby="ca-nav-title" data-bs-theme="dark">
-  <div class="offcanvas-header">
-    <a class="ca-nav-brand" href="/" id="ca-nav-title">
+<aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="@Model.Sidebar" data-enable-persistence="true" aria-label="@T["Modules"]">
+  <div class="sidebar-brand">
+    <a class="brand-link" href="/">
       <span class="ca-brand-mark" aria-hidden="true"><i class="bi bi-gear-wide-connected"></i></span>
-      <span>
-        <strong>@(User.FindFirstValue(TenantClaims.OrganizationName) ?? T["Chakki ERP"])</strong>
-        <small>@User.FindFirstValue(TenantClaims.FullName)</small>
-      </span>
+      <span class="brand-text">@(orgName ?? T["Chakki ERP"])</span>
     </a>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="@T["Close menu"]"></button>
   </div>
-  <div class="offcanvas-body">
-    <nav aria-label="@T["Modules"]">
-      @foreach (var section in sections)
-      {
-        var visible = section.Items.Where(i => !Chakki.Web.Infrastructure.NavMenu.MenuOnly.Contains(i.Href)).ToList();
-        if (visible.Count == 0) { continue; }
-        <div class="ca-nav-header">@T[section.Title]</div>
-        <ul class="ca-nav-list">
+  <div class="sidebar-wrapper">
+    <div class="ca-sidebar-workspace">
+      <span class="ca-workspace-icon" aria-hidden="true">@(string.IsNullOrEmpty(fullName) ? "?" : fullName[..1].ToUpperInvariant())</span>
+      <span class="ca-workspace-copy"><strong>@fullName</strong><small>@string.Join(", ", new[] { "Owner", "Manager", "Operator", "Accountant", "PlatformAdmin" }.Where(User.IsInRole).Select(r => T[r].Value))</small></span>
+    </div>
+    <nav class="mt-1">
+      <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" data-accordion="false">
+        @foreach (var section in sections)
+        {
+          var visible = section.Items.Where(i => !Chakki.Web.Infrastructure.NavMenu.MenuOnly.Contains(i.Href)).ToList();
+          if (visible.Count == 0) { continue; }
+          <li class="nav-header">@T[section.Title]</li>
           @foreach (var item in visible)
           {
-            <li><a class="@(Active(item.Href) ? "active" : "")" href="@item.Href" aria-current="@(Active(item.Href) ? "page" : null)" data-ca-nav-link><i class="bi @item.Icon" aria-hidden="true"></i><span>@T[item.Label]</span></a></li>
+            var on = Active(item.Href) && !visible.Any(o => o.Href.Length > item.Href.Length && Active(o.Href));
+            <li class="nav-item">
+              <a class="nav-link@(on ? " active" : "")" href="@item.Href" aria-current="@(on ? "page" : null)" title="@T[item.Label]">
+                <i class="nav-icon bi @item.Icon" aria-hidden="true"></i>
+                <p>@T[item.Label]</p>
+              </a>
+            </li>
           }
-        </ul>
-      }
+        }
+      </ul>
     </nav>
   </div>
 </aside>

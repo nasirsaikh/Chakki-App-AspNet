@@ -10,13 +10,19 @@
     var path = Context.Request.Path.Value ?? "/";
     var returnUrl = Context.Request.Path + Context.Request.QueryString;
     var title = ViewData["Title"] as string ?? "";
+    var theme = Chakki.Web.Infrastructure.ThemePrefs.From(Context.Request);
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    // Breadcrumb: Home / module (from the menu) / this page.
+    var lowerPath = path.ToLowerInvariant();
+    var crumb = signedIn ? Chakki.Web.Infrastructure.NavMenu.For(User).SelectMany(sec => sec.Items)
+        .Where(i => i.Href != "/" && lowerPath.StartsWith(i.Href)).OrderByDescending(i => i.Href.Length).FirstOrDefault() : null;
 }
 <!doctype html>
-<html lang="@(hi ? "hi" : "en")" data-bs-theme="light" data-ca-mode="system" data-density="compact" data-ca-header="light" data-ca-sidebar="dark">
+<html lang="@(hi ? "hi" : "en")" data-bs-theme="@(theme.Mode == "dark" ? "dark" : "light")" data-ca-mode="@theme.Mode" data-density="@theme.Density" data-ca-header="@theme.Header" data-ca-sidebar="@theme.Sidebar" data-lte-color-mode="off" style="@theme.CssVariables">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#b45309">
+  <meta name="theme-color" content="@theme.AccentColor.Hex">
   <meta name="htmx-config" content='{"allowEval": false, "includeIndicatorStyles": false, "historyCacheSize": 0, "selfRequestsOnly": true}'>
   <title>@(string.IsNullOrEmpty(title) ? "" : title + " · ")@(orgName ?? T["Chakki ERP"])</title>
   <link rel="icon" href="~/favicon.svg" type="image/svg+xml">
@@ -30,32 +36,37 @@
   <link rel="stylesheet" href="~/css/app.css" asp-append-version="true">
   @await RenderSectionAsync("Head", required: false)
 </head>
-<body class="bg-body-tertiary" hx-headers='{"X-CSRF-TOKEN": "@token"}'>
+<body class="layout-fixed @(signedIn ? "sidebar-expand-lg sidebar-mini" : "ca-no-sidebar") bg-body-tertiary" hx-headers='{"X-CSRF-TOKEN": "@token"}'>
 <a class="visually-hidden-focusable" href="#main">@T["Skip to content"]</a>
-<div class="ca-shell">
-  <nav class="app-header navbar navbar-expand bg-body sticky-top" aria-label="@T["Top bar"]">
+<div class="app-wrapper">
+  <nav class="app-header navbar navbar-expand bg-body" aria-label="@T["Top bar"]">
     <div class="container-fluid">
       <ul class="navbar-nav align-items-center">
-        <li class="nav-item@(User.Identity?.IsAuthenticated == true ? "" : " d-none")">
-          <button class="nav-link btn btn-link" type="button" data-bs-toggle="offcanvas" data-bs-target="#ca-nav" aria-controls="ca-nav" aria-label="@T["Open menu"]" title="@T["Menu"]"><i class="bi bi-list" aria-hidden="true"></i></button>
-        </li>
-        <li class="nav-item">
+        @if (signedIn)
+        {
+          <li class="nav-item"><a class="nav-link" data-lte-toggle="sidebar" href="#" role="button" aria-label="@T["Open menu"]" title="@T["Menu"]"><i class="bi bi-list" aria-hidden="true"></i></a></li>
+        }
+        <li class="nav-item@(signedIn ? " d-lg-none" : "")">
           <a class="ca-header-brand" href="/">
             <span class="ca-brand-mark" aria-hidden="true"><i class="bi bi-gear-wide-connected"></i></span>
             <span class="ca-brand-text">@(orgName ?? T["Chakki ERP"])</span>
           </a>
         </li>
+        @if (User.HasClaim(c => c.Type == TenantClaims.OrganizationId))
+        {
+          <li class="nav-item d-none d-xl-block"><a class="nav-link" href="/">@T["Dashboard"]</a></li>
+          <li class="nav-item d-none d-xl-block"><a class="nav-link" href="/orders">@T["Grinding orders"]</a></li>
+        }
       </ul>
       <ul class="navbar-nav ms-auto align-items-center ca-header-end">
         @if (User.HasClaim(c => c.Type == TenantClaims.OrganizationId))
         {
-          <li class="nav-item d-none d-sm-block me-1"><a class="btn btn-primary btn-sm" href="/orders/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["New order"]</a></li>
-          <li class="nav-item"><a class="nav-link ca-search-trigger" href="/search" data-ca-search-open title="@T["Search"] (Ctrl+K)" aria-label="@T["Search"]"><i class="bi bi-search" aria-hidden="true"></i><span class="d-none d-lg-inline">@T["Search…"]</span><kbd class="d-none d-lg-inline">Ctrl K</kbd></a></li>
+          <li class="nav-item d-none d-sm-block me-1"><a class="btn btn-primary btn-sm ca-new-btn" href="/orders/new"><i class="bi bi-plus-lg" aria-hidden="true"></i> @T["New order"]</a></li>
+          <li class="nav-item"><a class="nav-link ca-search-trigger" href="/search" data-ca-search-open title="@T["Search"] (Ctrl+K)" aria-label="@T["Search"]"><i class="bi bi-search" aria-hidden="true"></i><span class="d-none d-xl-inline">@T["Search…"]</span><kbd class="d-none d-xl-inline">Ctrl K</kbd></a></li>
           <li class="nav-item"><a class="nav-link" href="/chat" title="@T["Ask the assistant"]" aria-label="@T["Ask the assistant"]"><i class="bi bi-chat-dots" aria-hidden="true"></i></a></li>
         }
         <li class="nav-item">
           <form asp-antiforgery="true" method="post" action="/language" class="d-inline">
-            
             <input type="hidden" name="culture" value="@(hi ? "en-IN" : "hi-IN")">
             <input type="hidden" name="returnUrl" value="@returnUrl">
             <button class="nav-link btn btn-link ca-lang" type="submit" title="@(hi ? "Switch to English" : "हिन्दी में देखें")" aria-label="@(hi ? "Switch to English" : "हिन्दी में देखें")">
@@ -63,7 +74,8 @@
             </button>
           </form>
         </li>
-        <li class="nav-item"><button class="nav-link btn btn-link" type="button" data-ca-theme aria-label="@T["Light or dark"]" title="@T["Light or dark"]"><i class="bi bi-circle-half" data-ca-theme-icon aria-hidden="true"></i></button></li>
+        <li class="nav-item d-none d-sm-block"><button class="nav-link btn btn-link" type="button" data-ca-theme aria-label="@T["Light or dark"]" title="@T["Light or dark"]"><i class="bi bi-circle-half" data-ca-theme-icon aria-hidden="true"></i></button></li>
+        <li class="nav-item"><button class="nav-link btn btn-link" type="button" data-bs-toggle="offcanvas" data-bs-target="#ca-customize" aria-controls="ca-customize" aria-label="@T["Customize look"]" title="@T["Customize look"]"><i class="bi bi-palette" aria-hidden="true"></i></button></li>
         @if (User.Identity?.IsAuthenticated == true)
         {
           <li class="nav-item dropdown user-menu">
@@ -89,7 +101,8 @@
 
   @if (User.Identity?.IsAuthenticated == true)
   {
-    <partial name="_Nav" />
+    <partial name="_Nav" model="theme" />
+    <div class="sidebar-overlay"></div>
     @if (User.HasClaim(c => c.Type == TenantClaims.OrganizationId))
     {
       <div class="modal fade ca-search-modal" id="ca-search" tabindex="-1" aria-label="@T["Search"]" aria-hidden="true">
@@ -108,7 +121,7 @@
     }
   }
 
-  <main id="main" class="ca-main" tabindex="-1">
+  <main id="main" class="app-main" tabindex="-1">
     @if (IsSectionDefined("PageHeader") || !string.IsNullOrEmpty(title))
     {
       <div class="app-content-header ca-page-header">
@@ -118,7 +131,20 @@
               <h1 class="ca-page-title">@title</h1>
               @if (ViewData["Lead"] is string lead) { <p class="ca-page-lead">@lead</p> }
             </div>
-            <div class="ca-page-actions">@await RenderSectionAsync("Actions", required: false)</div>
+            <div class="ca-page-side">
+              @if (signedIn && path != "/")
+              {
+                <ol class="breadcrumb ca-breadcrumb" aria-label="@T["You are here"]">
+                  <li class="breadcrumb-item"><a href="/"><i class="bi bi-house" aria-hidden="true"></i> @T["Home"]</a></li>
+                  @if (crumb != null && !string.Equals(crumb.Href, path.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+                  {
+                    <li class="breadcrumb-item"><a href="@crumb.Href">@T[crumb.Label]</a></li>
+                  }
+                  <li class="breadcrumb-item active" aria-current="page">@(crumb != null && string.Equals(crumb.Href, path.TrimEnd('/'), StringComparison.OrdinalIgnoreCase) ? T[crumb.Label].Value : title)</li>
+                </ol>
+              }
+              <div class="ca-page-actions">@await RenderSectionAsync("Actions", required: false)</div>
+            </div>
           </div>
         </div>
       </div>
@@ -139,11 +165,14 @@
     </div>
   </main>
   <footer class="app-footer">
-    <strong>@(orgName ?? T["Chakki ERP"])</strong> · @T["Flour mill management"]
+    <div class="float-end d-none d-sm-inline">@T["Flour mill management"]</div>
+    <strong>@(orgName ?? T["Chakki ERP"])</strong>
   </footer>
 </div>
+<partial name="_Customize" model="theme" />
 <div class="ca-toast-zone" aria-live="polite"></div>
 <script src="~/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+<script src="~/vendor/adminlte/adminlte.min.js"></script>
 <script src="~/vendor/htmx/htmx.min.js"></script>
 @await RenderSectionAsync("Scripts", required: false)
 <script src="~/vendor/tom-select/tom-select.complete.min.js"></script>

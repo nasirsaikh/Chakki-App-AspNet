@@ -20,6 +20,7 @@ EF Core on SQLite, ASP.NET Identity, and an optional **Claude** chat assistant.
 | Stock | Inventory, purchases (supplier payables), retail sales with COGS, buyback against fees, production / yield, wastage |
 | Books | Double-entry journal, ledger per account, manual entries, reversal (no edits or deletes), reports, P&L, trial balance |
 | People | Employees (daily / monthly wages), attendance, payroll posting, maintenance (Takai, belts, bearings) with repeats |
+| Look | AdminLTE 4 layout (fixed sidebar that folds to icons, top bar, breadcrumb). **Customize look** (palette icon): light / dark / device, text size, font, accent colour, dark or light sidebar, top bar colour, spacing; remembered per device |
 | Setup | Chakki settings, payment gateways, users and roles, platform admin (organisations only) |
 | Chat | Ask in Hindi, Hinglish or English: "Geeta ka udhaar kitna hai?", "आज कितनी पिसाई हुई?", "Which customers owe the most?" |
 
