@@ -42,7 +42,16 @@ Open http://localhost:5050. Demo logins, all with the password you set:
 Or click **Register your chakki** on the login page to create a new organisation. The database and keys are created in
 `src/Chakki.Web/App_Data/` on first run (migrations are applied automatically).
 
-Windows (PowerShell): `$env:Seed__DemoPassword='choose-a-password'; $env:ASPNETCORE_ENVIRONMENT='Development'; dotnet run`
+Windows Command Prompt (cmd):
+
+```bat
+cd src\Chakki.Web
+set Seed__DemoPassword=choose-a-password
+set ASPNETCORE_ENVIRONMENT=Development
+dotnet run
+```
+
+Windows PowerShell: `$env:Seed__DemoPassword='choose-a-password'; $env:ASPNETCORE_ENVIRONMENT='Development'; dotnet run`
 
 ### Tests
 
